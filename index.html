@@ -731,14 +731,23 @@ function renderSessionList() {
 
 function closeModal() { document.getElementById('modal').classList.remove('open'); }
 async function saveSettings() {
-  await fetch(apiUrl('/api/settings'), {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: document.getElementById('m-model').value || 'gpt-4o-mini',
-      api_key: document.getElementById('m-key').value,
-      base_url: document.getElementById('m-base').value,
-    })
-  });
+  const newBackend = document.getElementById('m-backend').value.trim().replace(/\/+$/, '');
+  if (newBackend !== BACKEND) {
+    localStorage.setItem('minidevin_backend', newBackend);
+    BACKEND = newBackend;
+  }
+  // Hanya kirim konfigurasi LLM jika API key diisi — agar tidak menimpa konfigurasi server dari Pages
+  const key = document.getElementById('m-key').value.trim();
+  if (key) {
+    await fetch(apiUrl('/api/settings'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: document.getElementById('m-model').value || 'gpt-4o-mini',
+        api_key: key,
+        base_url: document.getElementById('m-base').value,
+      })
+    });
+  }
   closeModal();
   location.reload();
 }
