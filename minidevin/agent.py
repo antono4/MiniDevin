@@ -1,9 +1,13 @@
-"""MiniDevin agent loop v2: LLM + tools, cancellation, usage tracking."""
+"""MiniDevin agent loop v3: tools + web_fetch + plan mode + git snapshots."""
 
 import asyncio
+import html
 import json
 import os
+import re
+import shutil
 import subprocess
+import urllib.request
 from pathlib import Path
 
 from openai import AsyncOpenAI
@@ -15,27 +19,35 @@ MAX_STEPS = 40
 BASH_TIMEOUT = 120
 OUTPUT_LIMIT = 6000
 TREE_LIMIT = 300
+WEB_LIMIT = 4000
 
 BLOCKED_SUBSTRINGS = ("rm -rf /", "rm -rf ~", "mkfs.", ":(){ :|:& };:", "dd if=/dev/zero of=/dev", "> /dev/sd")
 
-SYSTEM_PROMPT = f"""You are MiniDevin, an autonomous AI software engineer (inspired by OpenDevin/OpenHands).
-You help the user build software by executing real actions in a sandboxed workspace.
+SYSTEM_PROMPT = f"""Anda adalah MiniDevin, agen software engineer AI otonom (terinspirasi OpenDevin/OpenHands).
+Anda membantu user membangun software dengan mengeksekusi aksi nyata di workspace sandbox.
 
-Workspace directory: {WORKSPACE}
+Workspace: {WORKSPACE}
 
-How you work:
-1. Think briefly about the task, then act using the available tools.
-2. Use run_bash to run shell commands (install packages, run scripts, inspect output).
-3. Use write_file to create files and edit_file for precise modifications. Use read_file and list_files to inspect the workspace.
-4. Verify your work: run the code you write and check the output before declaring completion.
-5. When the task is fully done, call the `finish` tool with a summary of what you built.
+Cara bekerja:
+1. Berpikir singkat, lalu bertindak dengan tools yang tersedia.
+2. run_bash untuk perintah shell; write_file/edit_file untuk file; read_file/list_files untuk inspeksi; web_fetch untuk riset internet.
+3. Verifikasi hasil kerja Anda: jalankan kode dan cek output sebelum menyatakan selesai.
+4. Jika tugas selesai, panggil tool `finish` dengan ringkasan (Markdown).
 
-Rules:
-- Always prefer small, verifiable steps.
-- Never ask the user to run commands for you; do it yourself with the tools.
-- Format your final summary in Markdown.
-- Reply in the same language the user uses.
+Aturan:
+- Langkah kecil dan ter-verifikasi.
+- Jangan minta user menjalankan perintah; lakukan sendiri dengan tools.
+- Ringkasan akhir dalam Markdown.
+- Balas dengan bahasa yang sama dengan user.
 """
+
+PLAN_PROMPT = """Anda adalah perencana (planner). Buat rencana langkah-demi-langkah yang ringkas
+untuk menyelesaikan tugas user berikut. Jangan jalankan apa pun — hanya rencana bernomor.
+Rencana akan dijalankan oleh agen coder.
+
+Tugas: {task}
+
+Rencana:"""
 
 TOOLS = [
     {
@@ -106,6 +118,20 @@ TOOLS = [
                     "path": {"type": "string", "description": "Directory relative to workspace (default '.')."},
                     "depth": {"type": "integer", "description": "Max depth (default 2)."},
                 },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_fetch",
+            "description": "Fetch a web page URL and return its text content (HTML stripped). Use for research.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "The URL to fetch."},
+                },
+                "required": ["url"],
             },
         },
     },
@@ -213,6 +239,19 @@ def tool_list_files(path: str = ".", depth: int = 2) -> str:
         return f"Error: {e}"
 
 
+def tool_web_fetch(url: str) -> str:
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "MiniDevin/3.0"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            raw = resp.read(500_000).decode(resp.headers.get_content_charset() or "utf-8", errors="replace")
+        text = re.sub(r"(?is)<(script|style|noscript)[^>]*>.*?</\1>", " ", raw)
+        text = re.sub(r"(?s)<[^>]+>", " ", text)
+        text = html.unescape(re.sub(r"\s+", " ", text)).strip()
+        return text[:WEB_LIMIT] or "(halaman kosong)"
+    except Exception as e:
+        return f"Error: {e}"
+
+
 def execute_tool(name: str, args: dict) -> str:
     if name == "run_bash":
         return tool_run_bash(args["command"])
@@ -224,16 +263,54 @@ def execute_tool(name: str, args: dict) -> str:
         return tool_read_file(args["path"])
     if name == "list_files":
         return tool_list_files(args.get("path", "."), int(args.get("depth", 2)))
+    if name == "web_fetch":
+        return tool_web_fetch(args["url"])
     if name == "finish":
         return "__FINISH__"
     return f"Error: unknown tool {name}"
 
 
-async def run_agent(user_message: str, history: list, config: dict, emit, cancel: asyncio.Event) -> dict:
-    """Run the agent loop. `emit` is an async callable sending event dicts to the client.
-    Returns a stats dict (steps, tokens) for session bookkeeping."""
+async def make_plan(task: str, config: dict) -> str:
     client = AsyncOpenAI(api_key=config["api_key"], base_url=config.get("base_url") or None)
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
+    resp = await client.chat.completions.create(
+        model=config["model"],
+        messages=[
+            {"role": "system", "content": "Anda adalah planner ulang-tugas."},
+            {"role": "user", "content": PLAN_PROMPT.format(task=task)},
+        ],
+    )
+    return resp.choices[0].message.content or ""
+
+
+def git_snapshot(message: str) -> str:
+    """Commit current workspace state. Returns result text."""
+    if not shutil.which("git"):
+        return "git tidak tersedia"
+    env = dict(os.environ)
+    opts = ["-c", "user.name=MiniDevin", "-c", "user.email=minidevin@localhost"]
+
+    def run(*args):
+        return subprocess.run(["git", *opts, *args], cwd=WORKSPACE, capture_output=True, text=True, env=env)
+
+    if not (WORKSPACE / ".git").exists():
+        run("init")
+        run("add", "-A")
+    status = run("status", "--porcelain")
+    if not status.stdout.strip():
+        return "tidak ada perubahan"
+    run("add", "-A")
+    commit = run("commit", "-m", message[:200])
+    return (commit.stdout + commit.stderr).strip()
+
+
+async def run_agent(user_message: str, history: list, config: dict, emit, cancel: asyncio.Event,
+                    plan: str | None = None) -> dict:
+    """Run the agent loop. `emit` sends event dicts to the client. Returns usage stats."""
+    client = AsyncOpenAI(api_key=config["api_key"], base_url=config.get("base_url") or None)
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    if plan:
+        messages.append({"role": "system", "content": f"Rencana yang harus Anda ikuti:\n{plan}"})
+    messages += history
     messages.append({"role": "user", "content": user_message})
     usage = {"prompt_tokens": 0, "completion_tokens": 0}
 

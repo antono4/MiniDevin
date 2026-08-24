@@ -32,10 +32,11 @@
   .msg.agent { align-self: flex-start; background: #161b22; border: 1px solid #30363d; }
   .msg.thought { align-self: flex-start; background: transparent; border: 1px dashed #30363d; color: #8b949e; font-style: italic; font-size: 13px; }
   .msg.error { align-self: flex-start; background: #3d1d1d; border: 1px solid #f85149; color: #ffa198; }
-  .msg.agent pre { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px 10px; overflow-x: auto; margin: 6px 0; font-size: 12.5px; }
-  .msg.agent code { font-family: 'Cascadia Code', monospace; font-size: 12.5px; color: #a5d6ff; }
-  .msg.agent p { margin: 4px 0; }
-  .msg.agent ul, .msg.agent ol { margin: 4px 0 4px 20px; }
+  .msg.plan { align-self: flex-start; background: #1c1430; border: 1px solid #8957e5; }
+  .msg.agent pre, .msg.plan pre { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px 10px; overflow-x: auto; margin: 6px 0; font-size: 12.5px; }
+  .msg.agent code, .msg.plan code { font-family: 'Cascadia Code', monospace; font-size: 12.5px; color: #a5d6ff; }
+  .msg.agent p, .msg.plan p { margin: 4px 0; }
+  .msg.agent ul, .msg.agent ol, .msg.plan ul, .msg.plan ol { margin: 4px 0 4px 20px; }
 
   details.block { align-self: flex-start; width: 88%; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; font-size: 13px; }
   details.block summary { background: #161b22; padding: 6px 12px; color: #58a6ff; font-family: monospace; cursor: pointer; list-style: none; user-select: none; }
@@ -45,9 +46,11 @@
   details.block.obs pre { color: #7ee787; }
 
   #typing { display: none; padding: 6px 16px; color: #8b949e; font-size: 13px; flex-shrink: 0; }
-  #inputbar { background: #161b22; border-top: 1px solid #30363d; padding: 12px 16px; display: flex; gap: 10px; flex-shrink: 0; }
+  #inputbar { background: #161b22; border-top: 1px solid #30363d; padding: 12px 16px; display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
   #input { flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; color: #e6edf3; padding: 10px 14px; font-size: 14px; resize: none; font-family: inherit; }
   #input:focus { outline: none; border-color: #58a6ff; }
+  .toggle { display: flex; align-items: center; gap: 6px; color: #8b949e; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+  .toggle input { accent-color: #8957e5; }
 
   #tabs { display: flex; background: #161b22; border-bottom: 1px solid #30363d; flex-shrink: 0; }
   #tabs button { background: none; border: none; color: #8b949e; padding: 10px 16px; cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent; }
@@ -63,11 +66,12 @@
   #file-tree .node:hover { background: #21262d; }
   #file-tree .dir > .node { color: #58a6ff; }
   #file-tree .file > .node { color: #e6edf3; }
-  #tree-head { display: flex; justify-content: space-between; align-items: center; padding: 2px 6px 8px; color: #8b949e; font-size: 12px; }
+  #tree-head { display: flex; justify-content: space-between; align-items: center; padding: 2px 6px 8px; color: #8b949e; font-size: 12px; gap: 6px; }
 
-  #terminal-log { font-family: 'Cascadia Code', monospace; font-size: 12.5px; background: #010409; border-radius: 8px; padding: 12px; min-height: 100%; white-space: pre-wrap; word-break: break-word; }
+  #terminal-log, #git-log { font-family: 'Cascadia Code', monospace; font-size: 12.5px; background: #010409; border-radius: 8px; padding: 12px; min-height: 100%; white-space: pre-wrap; word-break: break-word; }
   #terminal-log .cmd { color: #58a6ff; }
   #terminal-log .out { color: #7ee787; }
+  #git-log { color: #d2a8ff; }
 
   #viewer-head { color: #8b949e; font-size: 12px; padding: 2px 6px 8px; font-family: monospace; }
   #viewer-content { font-family: 'Cascadia Code', monospace; font-size: 12.5px; background: #010409; border-radius: 8px; padding: 12px; white-space: pre-wrap; word-break: break-word; color: #c9d1d9; }
@@ -88,7 +92,7 @@
 <body>
 <header>
   <h1>🐚 MiniDevin</h1>
-  <span class="badge" id="model-badge">v2</span>
+  <span class="badge" id="model-badge">v3</span>
   <span class="spacer"></span>
   <button class="btn" onclick="newSession()">＋ Baru</button>
   <button class="btn" onclick="openSessions()">🕘 Riwayat</button>
@@ -99,10 +103,13 @@
 <main>
   <section id="chat-panel">
     <div id="chat">
-      <div class="msg agent"><p>Halo! Saya <strong>MiniDevin v2</strong> — agen AI yang menulis &amp; menjalankan kode di sandbox. Panel kanan menampilkan <strong>file explorer</strong>, <strong>terminal</strong>, dan <strong>viewer</strong> secara real-time.</p></div>
+      <div class="msg agent"><p>Halo! Saya <strong>MiniDevin v3</strong> — agen AI yang menulis &amp; menjalankan kode di sandbox, bisa <strong>riset web</strong> (web_fetch), <strong>mode rencana</strong> (planner → coder), dan <strong>snapshot git</strong> otomatis. Panel kanan: <strong>Files</strong>, <strong>Terminal</strong>, <strong>Viewer</strong>, <strong>Git</strong>.</p></div>
     </div>
     <div id="typing">🤖 MiniDevin sedang bekerja…</div>
     <div id="inputbar">
+      <label class="toggle" title="Planner menyusun rencana dulu, lalu coder mengeksekusinya">
+        <input type="checkbox" id="plan-mode"> 🧠 Rencana
+      </label>
       <textarea id="input" rows="1" placeholder="Ketik tugas untuk MiniDevin… (Enter = kirim)"></textarea>
       <button class="btn primary" id="send-btn" onclick="send()">Kirim</button>
       <button class="btn danger" id="stop-btn" style="display:none" onclick="stop()">⏹ Stop</button>
@@ -114,9 +121,17 @@
       <button class="active" data-tab="files" onclick="switchTab('files')">📁 Files</button>
       <button data-tab="terminal" onclick="switchTab('terminal')">💻 Terminal</button>
       <button data-tab="viewer" onclick="switchTab('viewer')">📄 Viewer</button>
+      <button data-tab="git" onclick="switchTab('git')">🌿 Git</button>
     </div>
     <div class="tab-content active" id="tab-files">
-      <div id="tree-head"><span>sandbox/</span><button class="btn" onclick="refreshFiles()">↻ Refresh</button></div>
+      <div id="tree-head">
+        <span>sandbox/</span>
+        <span>
+          <button class="btn" onclick="document.getElementById('upload-input').click()">⬆ Upload</button>
+          <button class="btn" onclick="refreshFiles()">↻</button>
+        </span>
+      </div>
+      <input type="file" id="upload-input" style="display:none" onchange="uploadFile(this)">
       <div id="file-tree"></div>
     </div>
     <div class="tab-content" id="tab-terminal"><div id="terminal-log"><span style="color:#8b949e"># Log perintah bash agen akan muncul di sini</span></div></div>
@@ -124,6 +139,7 @@
       <div id="viewer-head">Pilih file di tab Files untuk melihat isinya</div>
       <div id="viewer-content"></div>
     </div>
+    <div class="tab-content" id="tab-git"><div id="git-log">Belum ada snapshot. MiniDevin melakukan commit otomatis setelah setiap tugas selesai.</div></div>
   </section>
 </main>
 
@@ -174,8 +190,6 @@ function md(text) {
   return d.innerHTML.replace(/\n/g, '<br>');
 }
 
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
 function addMsg(cls, text, isMd) {
   const d = document.createElement('div');
   d.className = 'msg ' + cls;
@@ -187,10 +201,11 @@ function addBlock(tool, args, obs) {
   const d = document.createElement('details');
   d.className = 'block' + (obs ? ' obs' : '');
   d.open = true;
-  const label = { run_bash: '$ bash', write_file: '📝 write_file', edit_file: '✏️ edit_file', read_file: '📖 read_file', list_files: '📂 list_files', finish: '✅ finish' }[tool] || tool;
+  const label = { run_bash: '$ bash', write_file: '📝 write_file', edit_file: '✏️ edit_file', read_file: '📖 read_file', list_files: '📂 list_files', web_fetch: '🌐 web_fetch', git: '🌿 git', finish: '✅ finish' }[tool] || tool;
   let body;
   if (obs !== undefined) body = obs;
   else if (tool === 'run_bash') body = args.command;
+  else if (tool === 'web_fetch') body = args.url;
   else if (tool === 'write_file') body = args.path + '\n\n' + (args.content || '').slice(0, 600);
   else if (tool === 'edit_file') body = args.path + '\n\n- ' + (args.old_str || '').slice(0, 300) + '\n+ ' + (args.new_str || '').slice(0, 300);
   else body = JSON.stringify(args, null, 2);
@@ -216,23 +231,25 @@ function handleEvent(ev) {
       chat.querySelectorAll('.msg, details').forEach((n, i) => { if (i > 0) n.remove(); });
       termLog.innerHTML = '<span style="color:#8b949e"># Log perintah bash agen akan muncul di sini</span>';
       (ev.events || []).forEach(renderEvent);
-      refreshFiles();
+      refreshFiles(); refreshGit();
       break;
     case 'user': addMsg('user', ev.content); break;
     case 'thought': addMsg('thought', '💭 ' + ev.content); break;
+    case 'plan': addMsg('plan', '🧠 **Rencana:**\n\n' + ev.content, true); break;
     case 'message': addMsg('agent', ev.content, true); setRunning(false); break;
     case 'action': addBlock(ev.tool, ev.args); if (ev.tool === 'run_bash') termAppend(ev.args.command, '…'); break;
     case 'observation':
       addBlock(ev.tool, {}, ev.content);
       if (ev.tool === 'run_bash') { const outs = termLog.querySelectorAll('.out'); if (outs.length) outs[outs.length-1].textContent = ev.content; }
       if (['write_file','edit_file','run_bash'].includes(ev.tool)) refreshFiles();
+      if (ev.tool === 'git') refreshGit();
       break;
     case 'error': addMsg('error', '⚠️ ' + ev.content); setRunning(false); break;
-    case 'step': typing.textContent = `🤖 MiniDevin sedang bekerja… (langkah ${ev.step})`; break;
+    case 'step': typing.textContent = ev.step === 0 ? '🧠 Menyusun rencana…' : `🤖 MiniDevin sedang bekerja… (langkah ${ev.step})`; break;
     case 'done':
       if (ev.prompt_tokens) typing.textContent = `✅ Selesai — ${ev.prompt_tokens + ev.completion_tokens} token terpakai`;
       setRunning(false);
-      refreshFiles();
+      refreshFiles(); refreshGit();
       break;
   }
 }
@@ -259,7 +276,7 @@ function send() {
   addMsg('user', text);
   input.value = '';
   setRunning(true);
-  ws.send(JSON.stringify({ type: 'chat', message: text }));
+  ws.send(JSON.stringify({ type: 'chat', message: text, plan: document.getElementById('plan-mode').checked }));
 }
 
 function stop() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'stop' })); }
@@ -272,6 +289,7 @@ input.addEventListener('keydown', (e) => {
 function switchTab(name) {
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
+  if (name === 'git') refreshGit();
 }
 
 async function refreshFiles() {
@@ -307,6 +325,24 @@ async function viewFile(path) {
   document.getElementById('viewer-head').textContent = r.error ? '⚠️ ' + r.error : 'sandbox/' + r.path;
   document.getElementById('viewer-content').textContent = r.content || '';
   switchTab('viewer');
+}
+
+async function uploadFile(inputEl) {
+  const f = inputEl.files[0];
+  if (!f) return;
+  const fd = new FormData();
+  fd.append('file', f);
+  const r = await (await fetch('/api/upload', { method: 'POST', body: fd })).json();
+  inputEl.value = '';
+  if (r.error) alert('Upload gagal: ' + r.error);
+  refreshFiles();
+}
+
+async function refreshGit() {
+  try {
+    const r = await (await fetch('/api/git/log')).json();
+    document.getElementById('git-log').textContent = r.log || 'Belum ada snapshot. MiniDevin melakukan commit otomatis setelah setiap tugas selesai.';
+  } catch (e) {}
 }
 
 async function refreshStatus() {

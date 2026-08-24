@@ -1,18 +1,19 @@
-"""MiniDevin web server v2: sessions, file explorer API, persistent config, stop support."""
+"""MiniDevin web server v3: sessions, files, upload, git log, plan mode."""
 
 import asyncio
 import json
 import os
+import subprocess
 import time
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .agent import WORKSPACE, run_agent
+from .agent import WORKSPACE, git_snapshot, make_plan, run_agent
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -101,6 +102,29 @@ async def read_file(path: str = Query(...)):
         return JSONResponse({"error": "binary file"}, status_code=400)
 
 
+@app.post("/api/upload")
+async def upload(file: UploadFile):
+    name = Path(file.filename or "").name
+    if not name:
+        return JSONResponse({"error": "invalid filename"}, status_code=400)
+    data = await file.read()
+    if len(data) > 20 * 1024 * 1024:
+        return JSONResponse({"error": "file too large (max 20MB)"}, status_code=400)
+    (WORKSPACE / name).write_bytes(data)
+    return {"ok": True, "path": name, "size": len(data)}
+
+
+@app.get("/api/git/log")
+async def git_log():
+    if not (WORKSPACE / ".git").exists():
+        return {"log": ""}
+    r = subprocess.run(
+        ["git", "log", "--oneline", "--decorate", "-20"],
+        cwd=WORKSPACE, capture_output=True, text=True,
+    )
+    return {"log": r.stdout.strip()}
+
+
 @app.get("/api/sessions")
 async def list_sessions():
     out = []
@@ -118,6 +142,9 @@ def _save_session(session: dict):
     (SESSIONS_DIR / f"{session['id']}.json").write_text(json.dumps(session))
 
 
+SAVED_EVENTS = ("thought", "message", "action", "observation", "error", "plan")
+
+
 @app.websocket("/ws")
 async def ws(websocket: WebSocket):
     await websocket.accept()
@@ -127,7 +154,7 @@ async def ws(websocket: WebSocket):
     current_task: asyncio.Task | None = None
 
     async def emit(event: dict):
-        if session is not None and event["type"] in ("thought", "message", "action", "observation", "error"):
+        if session is not None and event["type"] in SAVED_EVENTS:
             session["events"].append(event)
         await websocket.send_text(json.dumps(event))
 
@@ -175,14 +202,24 @@ async def ws(websocket: WebSocket):
                 session["events"].append({"type": "user", "content": data["message"]})
                 cancel = asyncio.Event()
                 try:
+                    plan_text = None
+                    if data.get("plan"):
+                        await emit({"type": "step", "step": 0})
+                        plan_text = await make_plan(data["message"], CONFIG)
+                        await emit({"type": "plan", "content": plan_text})
+
                     current_task = asyncio.create_task(
-                        run_agent(data["message"], history, CONFIG, emit, cancel)
+                        run_agent(data["message"], history, CONFIG, emit, cancel, plan=plan_text)
                     )
                     await current_task
                     history.append({"role": "user", "content": data["message"]})
                     history.append({"role": "assistant", "content": "(task processed)"})
                     history[:] = history[-20:]
                     session["history"] = history
+
+                    snap = await asyncio.to_thread(git_snapshot, f"task: {session['title']}")
+                    if "perubahan" not in snap and "tidak tersedia" not in snap:
+                        await emit({"type": "observation", "tool": "git", "content": f"📸 Snapshot git:\n{snap}"})
                 except asyncio.CancelledError:
                     await emit({"type": "error", "content": "⏹️ Dihentikan oleh pengguna."})
                 except Exception as e:

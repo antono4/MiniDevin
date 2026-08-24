@@ -1,25 +1,35 @@
 # 🐚 MiniDevin — Code Less, Make More
 
-Versi mini dari [OpenDevin/OpenHands](https://github.com/All-Hands-AI/OpenHands): agen AI software engineer otonom dengan antarmuka web lengkap. Agen menulis file, menjalankan bash di sandbox, membaca hasilnya, dan memverifikasi pekerjaannya sendiri.
+Versi mini dari [OpenDevin/OpenHands](https://github.com/All-Hands-AI/OpenHands): agen AI software engineer otonom dengan antarmuka web lengkap. Agen menulis file, menjalankan bash di sandbox, riset web, dan memverifikasi pekerjaannya sendiri.
 
-## Fitur v2
+## Fitur
 
-- **Split view UI** — chat di kiri; panel kanan berisi 📁 Files (explorer sandbox), 💻 Terminal (log semua perintah agen), dan 📄 Viewer (klik file untuk melihat isi)
-- **6 tools agen** — `run_bash`, `write_file`, `edit_file` (string replace presisi), `read_file`, `list_files` (tree), `finish`
-- **Riwayat percakapan tersimpan** — sesi persisten di `.minidevin/sessions/`, bisa dibuka kembali lewat menu 🕘 Riwayat
-- **Tombol ⏹ Stop** — hentikan agen di tengah jalan (cancellable agent loop)
-- **Markdown rendering** — jawaban agen dirender dengan `marked` + `DOMPurify`
-- **Token usage** — jumlah token ditampilkan setelah tiap run
-- **Konfigurasi persisten** — settings disimpan di `.minidevin/config.json` (env: `LLM_MODEL`, `LLM_API_KEY`, `LLM_BASE_URL`)
-- **Safety guard** — blokir perintah bash berbahaya + path traversal keluar sandbox ditolak
+**Agen & Tools**
+- 7 tools: `run_bash` · `write_file` · `edit_file` (string replace presisi) · `read_file` · `list_files` (tree) · `web_fetch` (riset internet) · `finish`
+- **Mode 🧠 Rencana** — planner menyusun rencana dulu, lalu agen coder mengeksekusinya (toggle di input bar)
+- Agent loop cancellable (tombol ⏹ Stop), batas 40 langkah, token usage ditampilkan
+- Safety guard: perintah bash berbahaya diblokir, path traversal keluar sandbox ditolak
+
+**Antarmuka (split view)**
+- Chat dengan Markdown rendering (marked + DOMPurify), blok aksi/observasi collapsible
+- 📁 **Files** — file explorer sandbox + tombol ⬆ Upload (maks 20MB)
+- 💻 **Terminal** — log semua perintah bash agen
+- 📄 **Viewer** — klik file untuk melihat isi
+- 🌿 **Git** — snapshot otomatis setiap tugas selesai; log commit tampil di sini
+
+**Persistensi**
+- Riwayat percakapan tersimpan di `.minidevin/sessions/` (menu 🕘 Riwayat)
+- Konfigurasi LLM tersimpan di `.minidevin/config.json`
+- Env: `LLM_MODEL`, `LLM_API_KEY`, `LLM_BASE_URL`
 
 ## Arsitektur
 
 ```
-Browser (split-view UI) ──WebSocket──> FastAPI ──> Agent loop ──> LLM (OpenAI-compatible)
-                              │
-                              ├── REST: /api/files · /api/file · /api/sessions · /api/settings
-                              └── Tools: run_bash · write_file · edit_file · read_file · list_files · finish
+Browser ──WebSocket──> FastAPI ──> [Planner?] ──> Agent loop ──> LLM (OpenAI-compatible)
+                          │                            │
+                          ├─ REST: /api/files          ├─ tools: bash · file · web_fetch · finish
+                          ├─ /api/file · /api/upload   └─ git snapshot tiap tugas selesai
+                          └─ /api/git/log · /api/sessions · /api/settings
 ```
 
 ## Menjalankan
@@ -29,15 +39,8 @@ pip install -r requirements.txt
 python3 -m uvicorn minidevin.server:app --host 0.0.0.0 --port 12000
 ```
 
-Buka `http://localhost:12000` → ⚙️ Settings → masukkan Model + API Key (+ Base URL opsional untuk OpenRouter/Ollama/lokal).
+Buka `http://localhost:12000` → ⚙️ Settings → isi Model + API Key (+ Base URL opsional untuk OpenRouter/Ollama/lokal).
 
-## Cara kerja agent loop
+## Roadmap
 
-1. Pesan user + riwayat dikirim ke LLM beserta skema tools (function calling).
-2. Jika LLM memanggil tool → server mengeksekusinya di sandbox → observasi dikirim balik ke LLM.
-3. Berulang hingga `finish` atau batas 40 langkah; setiap langkah distreaming ke UI.
-4. Hasil run (events + history) disimpan sebagai sesi yang bisa dimuat ulang.
-
-## Roadmap (vs OpenDevin penuh)
-
-Belum ada: Docker sandbox per-sesi, multi-agent delegation, browser tool, dan integrasi git. Untuk versi penuh, gunakan [OpenHands](https://github.com/All-Hands-AI/OpenHands).
+Belum ada: Docker sandbox per-sesi, multi-agent penuh, browser interaktif. Untuk versi produksi, gunakan [OpenHands](https://github.com/All-Hands-AI/OpenHands).
