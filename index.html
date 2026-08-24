@@ -506,12 +506,12 @@ function useTemplate(el) {
 }
 
 function exportSession() {
-  if (sessionId) location.href = apiUrl('/api/export?id=' + encodeURIComponent(sessionId);
+  if (sessionId) location.href = apiUrl('/api/export?id=' + encodeURIComponent(sessionId));
 }
 
 async function loadWorkspaces() {
   const sel = document.getElementById('ws-select');
-  const list = await (await fetch(apiUrl('/api/workspaces')).json();
+  const list = await (await fetch(apiUrl('/api/workspaces'))).json();
   sel.innerHTML = '';
   list.forEach(w => {
     const o = document.createElement('option');
@@ -573,7 +573,7 @@ function switchTab(name) {
 
 async function refreshFiles() {
   try {
-    const tree = await (await fetch(apiUrl('/api/files?ws=' + encodeURIComponent(currentWs))).json();
+    const tree = await (await fetch(apiUrl('/api/files?ws=' + encodeURIComponent(currentWs)))).json();
     const el = document.getElementById('file-tree');
     el.innerHTML = '';
     const ul = document.createElement('ul');
@@ -600,7 +600,7 @@ function renderNode(node, prefix) {
 }
 
 async function viewFile(path) {
-  const r = await (await fetch(apiUrl('/api/file?ws=' + encodeURIComponent(currentWs) + '&path=' + encodeURIComponent(path))).json();
+  const r = await (await fetch(apiUrl('/api/file?ws=' + encodeURIComponent(currentWs) + '&path=' + encodeURIComponent(path)))).json();
   viewedPath = r.error ? null : r.path;
   document.getElementById('viewer-path').textContent = r.error ? '⚠️ ' + r.error : 'sandbox/' + r.path;
   document.getElementById('viewer-actions').style.display = r.error ? 'none' : '';
@@ -610,7 +610,7 @@ async function viewFile(path) {
 
 async function saveViewedFile() {
   if (!viewedPath) return;
-  const r = await (await fetch(apiUrl('/api/file', {
+  const r = await (await fetch(apiUrl('/api/file'), {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path: viewedPath, content: document.getElementById('viewer-content').value, ws: currentWs })
   })).json();
@@ -618,7 +618,7 @@ async function saveViewedFile() {
 }
 
 function downloadViewedFile() {
-  if (viewedPath) location.href = apiUrl('/api/download?ws=' + encodeURIComponent(currentWs) + '&path=' + encodeURIComponent(viewedPath);
+  if (viewedPath) location.href = apiUrl('/api/download?ws=' + encodeURIComponent(currentWs) + '&path=' + encodeURIComponent(viewedPath));
 }
 
 async function uploadFile(inputEl) {
@@ -626,7 +626,7 @@ async function uploadFile(inputEl) {
   if (!f) return;
   const fd = new FormData();
   fd.append('file', f);
-  const r = await (await fetch(apiUrl('/api/upload?ws=' + encodeURIComponent(currentWs), { method: 'POST', body: fd })).json();
+  const r = await (await fetch(apiUrl('/api/upload?ws=' + encodeURIComponent(currentWs)), { method: 'POST', body: fd })).json();
   inputEl.value = '';
   if (r.error) alert('Upload gagal: ' + r.error);
   refreshFiles();
@@ -634,7 +634,7 @@ async function uploadFile(inputEl) {
 
 async function refreshGit() {
   try {
-    const r = await (await fetch(apiUrl('/api/git/log?ws=' + encodeURIComponent(currentWs))).json();
+    const r = await (await fetch(apiUrl('/api/git/log?ws=' + encodeURIComponent(currentWs)))).json();
     const el = document.getElementById('git-log');
     el.innerHTML = '';
     if (!r.commits || !r.commits.length) {
@@ -657,12 +657,12 @@ async function refreshGit() {
 async function showDiff(sha) {
   const el = document.getElementById('git-diff');
   el.textContent = 'Memuat diff…';
-  const r = await (await fetch(apiUrl('/api/git/diff?ws=' + encodeURIComponent(currentWs) + '&sha=' + encodeURIComponent(sha))).json();
+  const r = await (await fetch(apiUrl('/api/git/diff?ws=' + encodeURIComponent(currentWs) + '&sha=' + encodeURIComponent(sha)))).json();
   el.textContent = r.diff || r.error || '(kosong)';
 }
 
 async function refreshStatus() {
-  const s = await (await fetch(apiUrl('/api/status')).json();
+  const s = await (await fetch(apiUrl('/api/status'))).json();
   document.getElementById('status-dot').classList.toggle('ok', s.configured);
   document.getElementById('model-badge').textContent = s.configured ? s.model : 'belum dikonfigurasi';
   if (s.configured) {
@@ -690,7 +690,7 @@ async function openSessions() {
   document.getElementById('sessions-body').style.display = '';
   document.getElementById('modal-save').style.display = 'none';
   document.getElementById('session-search').value = '';
-  cachedSessions = await (await fetch(apiUrl('/api/sessions')).json();
+  cachedSessions = await (await fetch(apiUrl('/api/sessions'))).json();
   renderSessionList();
   document.getElementById('modal').classList.add('open');
 }
@@ -718,7 +718,7 @@ function renderSessionList() {
     del.onclick = async (e) => {
       e.stopPropagation();
       if (!confirm('Hapus percakapan "' + s.title + '"?')) return;
-      await fetch(apiUrl('/api/sessions/' + s.id, { method: 'DELETE' });
+      await fetch(apiUrl('/api/sessions/' + s.id), { method: 'DELETE' });
       cachedSessions = cachedSessions.filter(x => x.id !== s.id);
       if (s.id === sessionId) newSession();
       renderSessionList();
@@ -731,7 +731,7 @@ function renderSessionList() {
 
 function closeModal() { document.getElementById('modal').classList.remove('open'); }
 async function saveSettings() {
-  await fetch(apiUrl('/api/settings', {
+  await fetch(apiUrl('/api/settings'), {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: document.getElementById('m-model').value || 'gpt-4o-mini',
@@ -740,7 +740,13 @@ async function saveSettings() {
     })
   });
   closeModal();
-  refreshStatus();
+  location.reload();
+}
+
+// GitHub Pages: minta Backend URL saat pertama kali dibuka
+if (location.hostname.endsWith('github.io') && !BACKEND) {
+  addMsg('agent', '👋 Ini adalah frontend statis. Masukkan alamat **Backend URL** server MiniDevin Anda di ⚙️ Settings (server tempat `uvicorn minidevin.server:app` berjalan), lalu simpan.', true);
+  setTimeout(openSettings, 400);
 }
 </script>
 </body>
