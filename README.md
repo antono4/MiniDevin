@@ -1,19 +1,26 @@
 # 🐚 MiniDevin — Code Less, Make More
 
-Versi mini dari [OpenDevin/OpenHands](https://github.com/All-Hands-AI/OpenHands): agen AI software engineer otonom dengan antarmuka web chat. Agen dapat menulis file, menjalankan perintah bash di sandbox, membaca hasilnya, dan memverifikasi pekerjaannya sendiri — persis konsep agent loop OpenDevin.
+Versi mini dari [OpenDevin/OpenHands](https://github.com/All-Hands-AI/OpenHands): agen AI software engineer otonom dengan antarmuka web lengkap. Agen menulis file, menjalankan bash di sandbox, membaca hasilnya, dan memverifikasi pekerjaannya sendiri.
+
+## Fitur v2
+
+- **Split view UI** — chat di kiri; panel kanan berisi 📁 Files (explorer sandbox), 💻 Terminal (log semua perintah agen), dan 📄 Viewer (klik file untuk melihat isi)
+- **6 tools agen** — `run_bash`, `write_file`, `edit_file` (string replace presisi), `read_file`, `list_files` (tree), `finish`
+- **Riwayat percakapan tersimpan** — sesi persisten di `.minidevin/sessions/`, bisa dibuka kembali lewat menu 🕘 Riwayat
+- **Tombol ⏹ Stop** — hentikan agen di tengah jalan (cancellable agent loop)
+- **Markdown rendering** — jawaban agen dirender dengan `marked` + `DOMPurify`
+- **Token usage** — jumlah token ditampilkan setelah tiap run
+- **Konfigurasi persisten** — settings disimpan di `.minidevin/config.json` (env: `LLM_MODEL`, `LLM_API_KEY`, `LLM_BASE_URL`)
+- **Safety guard** — blokir perintah bash berbahaya + path traversal keluar sandbox ditolak
 
 ## Arsitektur
 
 ```
-Browser (chat UI) ──WebSocket──> FastAPI server ──> Agent loop ──> LLM (OpenAI-compatible API)
-                                       │
-                                       └── Tools: run_bash · write_file · read_file · finish
+Browser (split-view UI) ──WebSocket──> FastAPI ──> Agent loop ──> LLM (OpenAI-compatible)
+                              │
+                              ├── REST: /api/files · /api/file · /api/sessions · /api/settings
+                              └── Tools: run_bash · write_file · edit_file · read_file · list_files · finish
 ```
-
-- `minidevin/agent.py` — agent loop + definisi & eksekusi tools (sandboxed di `sandbox/`)
-- `minidevin/server.py` — FastAPI: WebSocket `/ws`, REST `/api/settings` & `/api/status`
-- `minidevin/static/index.html` — UI chat (dark theme ala OpenDevin)
-- `sandbox/` — direktori kerja agen (path traversal keluar sandbox diblokir)
 
 ## Menjalankan
 
@@ -22,20 +29,15 @@ pip install -r requirements.txt
 python3 -m uvicorn minidevin.server:app --host 0.0.0.0 --port 12000
 ```
 
-Buka `http://localhost:12000`, klik **⚙️ Settings**, lalu masukkan:
-- **Model** — mis. `gpt-4o-mini`, `gpt-4o`, atau model lain
-- **API Key** — key OpenAI / OpenRouter / provider OpenAI-compatible lain
-- **Base URL** — opsional, mis. `https://openrouter.ai/api/v1`
-
-Konfigurasi juga bisa lewat environment variable: `LLM_MODEL`, `LLM_API_KEY`, `LLM_BASE_URL`.
+Buka `http://localhost:12000` → ⚙️ Settings → masukkan Model + API Key (+ Base URL opsional untuk OpenRouter/Ollama/lokal).
 
 ## Cara kerja agent loop
 
 1. Pesan user + riwayat dikirim ke LLM beserta skema tools (function calling).
-2. Jika LLM memanggil tool → server mengeksekusinya di sandbox → hasil (observasi) dikirim balik ke LLM.
-3. Berulang hingga LLM memanggil `finish` atau mencapai batas 30 langkah.
-4. Setiap langkah (pemikiran, aksi, observasi) distreaming ke UI secara real-time.
+2. Jika LLM memanggil tool → server mengeksekusinya di sandbox → observasi dikirim balik ke LLM.
+3. Berulang hingga `finish` atau batas 40 langkah; setiap langkah distreaming ke UI.
+4. Hasil run (events + history) disimpan sebagai sesi yang bisa dimuat ulang.
 
-## Batasan vs OpenDevin asli
+## Roadmap (vs OpenDevin penuh)
 
-MiniDevin adalah versi edukasi ~300 baris: belum ada Docker sandbox per-sesi, multi-agent, browsing, atau persistent session. Untuk versi penuh, gunakan [OpenHands](https://github.com/All-Hands-AI/OpenHands).
+Belum ada: Docker sandbox per-sesi, multi-agent delegation, browser tool, dan integrasi git. Untuk versi penuh, gunakan [OpenHands](https://github.com/All-Hands-AI/OpenHands).

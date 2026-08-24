@@ -4,75 +4,147 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🐚 MiniDevin — AI Software Engineer</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #e6edf3; height: 100vh; display: flex; flex-direction: column; }
-  header { background: #161b22; border-bottom: 1px solid #30363d; padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
-  header h1 { font-size: 18px; font-weight: 600; }
-  header .tag { font-size: 12px; color: #8b949e; }
-  header .spacer { flex: 1; }
+  html, body { height: 100%; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #e6edf3; display: flex; flex-direction: column; overflow: hidden; }
+  header { background: #161b22; border-bottom: 1px solid #30363d; padding: 10px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  header h1 { font-size: 17px; font-weight: 600; }
+  .badge { font-size: 11px; background: #21262d; border: 1px solid #30363d; border-radius: 20px; padding: 3px 10px; color: #8b949e; }
+  .spacer { flex: 1; }
   .btn { background: #21262d; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; padding: 6px 14px; cursor: pointer; font-size: 13px; }
   .btn:hover { background: #30363d; }
   .btn.primary { background: #238636; border-color: #238636; }
   .btn.primary:hover { background: #2ea043; }
-  #status-dot { width: 9px; height: 9px; border-radius: 50%; background: #f85149; display: inline-block; }
+  .btn.danger { background: #da3633; border-color: #da3633; }
+  #status-dot { width: 9px; height: 9px; border-radius: 50%; background: #f85149; }
   #status-dot.ok { background: #3fb950; }
-  #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-  .msg { max-width: 80%; padding: 10px 14px; border-radius: 10px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; font-size: 14px; }
-  .msg.user { align-self: flex-end; background: #1f6feb; }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #chat-panel { flex: 1.2; display: flex; flex-direction: column; min-width: 0; border-right: 1px solid #30363d; }
+  #side-panel { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #0d1117; }
+
+  #chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 88%; padding: 10px 14px; border-radius: 10px; line-height: 1.55; word-break: break-word; font-size: 14px; }
+  .msg.user { align-self: flex-end; background: #1f6feb; white-space: pre-wrap; }
   .msg.agent { align-self: flex-start; background: #161b22; border: 1px solid #30363d; }
-  .msg.thought { align-self: flex-start; background: transparent; border: 1px dashed #30363d; color: #8b949e; font-style: italic; }
+  .msg.thought { align-self: flex-start; background: transparent; border: 1px dashed #30363d; color: #8b949e; font-style: italic; font-size: 13px; }
   .msg.error { align-self: flex-start; background: #3d1d1d; border: 1px solid #f85149; color: #ffa198; }
-  .action { align-self: flex-start; max-width: 85%; width: 85%; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; font-size: 13px; }
-  .action .head { background: #161b22; padding: 6px 12px; color: #58a6ff; font-family: monospace; border-bottom: 1px solid #30363d; }
-  .action pre { padding: 10px 12px; font-family: 'Cascadia Code', monospace; font-size: 12.5px; overflow-x: auto; color: #a5d6ff; white-space: pre-wrap; }
-  .action.obs pre { color: #7ee787; max-height: 260px; overflow-y: auto; }
-  #typing { align-self: flex-start; color: #8b949e; font-size: 13px; display: none; padding: 4px 8px; }
-  #inputbar { background: #161b22; border-top: 1px solid #30363d; padding: 14px 20px; display: flex; gap: 10px; }
+  .msg.agent pre { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px 10px; overflow-x: auto; margin: 6px 0; font-size: 12.5px; }
+  .msg.agent code { font-family: 'Cascadia Code', monospace; font-size: 12.5px; color: #a5d6ff; }
+  .msg.agent p { margin: 4px 0; }
+  .msg.agent ul, .msg.agent ol { margin: 4px 0 4px 20px; }
+
+  details.block { align-self: flex-start; width: 88%; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; font-size: 13px; }
+  details.block summary { background: #161b22; padding: 6px 12px; color: #58a6ff; font-family: monospace; cursor: pointer; list-style: none; user-select: none; }
+  details.block summary::before { content: '▸ '; }
+  details.block[open] summary::before { content: '▾ '; }
+  details.block pre { padding: 10px 12px; font-family: 'Cascadia Code', monospace; font-size: 12.5px; overflow: auto; color: #a5d6ff; white-space: pre-wrap; max-height: 300px; }
+  details.block.obs pre { color: #7ee787; }
+
+  #typing { display: none; padding: 6px 16px; color: #8b949e; font-size: 13px; flex-shrink: 0; }
+  #inputbar { background: #161b22; border-top: 1px solid #30363d; padding: 12px 16px; display: flex; gap: 10px; flex-shrink: 0; }
   #input { flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; color: #e6edf3; padding: 10px 14px; font-size: 14px; resize: none; font-family: inherit; }
   #input:focus { outline: none; border-color: #58a6ff; }
+
+  #tabs { display: flex; background: #161b22; border-bottom: 1px solid #30363d; flex-shrink: 0; }
+  #tabs button { background: none; border: none; color: #8b949e; padding: 10px 16px; cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent; }
+  #tabs button.active { color: #e6edf3; border-bottom-color: #f78166; }
+  .tab-content { flex: 1; overflow: auto; display: none; padding: 10px; }
+  .tab-content.active { display: block; }
+
+  #file-tree { font-family: 'Cascadia Code', monospace; font-size: 13px; }
+  #file-tree ul { list-style: none; padding-left: 16px; }
+  #file-tree > ul { padding-left: 4px; }
+  #file-tree li { padding: 2px 0; }
+  #file-tree .node { cursor: pointer; border-radius: 4px; padding: 2px 6px; display: inline-block; }
+  #file-tree .node:hover { background: #21262d; }
+  #file-tree .dir > .node { color: #58a6ff; }
+  #file-tree .file > .node { color: #e6edf3; }
+  #tree-head { display: flex; justify-content: space-between; align-items: center; padding: 2px 6px 8px; color: #8b949e; font-size: 12px; }
+
+  #terminal-log { font-family: 'Cascadia Code', monospace; font-size: 12.5px; background: #010409; border-radius: 8px; padding: 12px; min-height: 100%; white-space: pre-wrap; word-break: break-word; }
+  #terminal-log .cmd { color: #58a6ff; }
+  #terminal-log .out { color: #7ee787; }
+
+  #viewer-head { color: #8b949e; font-size: 12px; padding: 2px 6px 8px; font-family: monospace; }
+  #viewer-content { font-family: 'Cascadia Code', monospace; font-size: 12.5px; background: #010409; border-radius: 8px; padding: 12px; white-space: pre-wrap; word-break: break-word; color: #c9d1d9; }
+
   #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); align-items: center; justify-content: center; z-index: 10; }
   #modal.open { display: flex; }
-  #modal .box { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 24px; width: 420px; }
+  #modal .box { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 24px; width: 440px; }
   #modal h2 { font-size: 16px; margin-bottom: 16px; }
   #modal label { display: block; font-size: 12px; color: #8b949e; margin: 10px 0 4px; }
   #modal input { width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; padding: 8px 10px; font-size: 13px; }
   #modal .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
   .hint { font-size: 12px; color: #8b949e; margin-top: 12px; line-height: 1.5; }
+  #session-list { max-height: 180px; overflow-y: auto; margin-top: 8px; }
+  #session-list .sitem { padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #c9d1d9; }
+  #session-list .sitem:hover { background: #21262d; }
 </style>
 </head>
 <body>
 <header>
   <h1>🐚 MiniDevin</h1>
-  <span class="tag">Code Less, Make More — AI software engineer mini (terinspirasi OpenDevin)</span>
+  <span class="badge" id="model-badge">v2</span>
   <span class="spacer"></span>
-  <span id="status-dot" title="LLM status"></span>
+  <button class="btn" onclick="newSession()">＋ Baru</button>
+  <button class="btn" onclick="openSessions()">🕘 Riwayat</button>
+  <span id="status-dot"></span>
   <button class="btn" onclick="openSettings()">⚙️ Settings</button>
 </header>
 
-<div id="chat">
-  <div class="msg agent">Halo! Saya MiniDevin, agen AI yang bisa menulis & menjalankan kode di sandbox. Contoh: "buatkan script python yang memplot data penjualan" atau "buatkan web kalkulator sederhana".</div>
-</div>
-<div id="typing">🤖 MiniDevin sedang bekerja…</div>
+<main>
+  <section id="chat-panel">
+    <div id="chat">
+      <div class="msg agent"><p>Halo! Saya <strong>MiniDevin v2</strong> — agen AI yang menulis &amp; menjalankan kode di sandbox. Panel kanan menampilkan <strong>file explorer</strong>, <strong>terminal</strong>, dan <strong>viewer</strong> secara real-time.</p></div>
+    </div>
+    <div id="typing">🤖 MiniDevin sedang bekerja…</div>
+    <div id="inputbar">
+      <textarea id="input" rows="1" placeholder="Ketik tugas untuk MiniDevin… (Enter = kirim)"></textarea>
+      <button class="btn primary" id="send-btn" onclick="send()">Kirim</button>
+      <button class="btn danger" id="stop-btn" style="display:none" onclick="stop()">⏹ Stop</button>
+    </div>
+  </section>
 
-<div id="inputbar">
-  <textarea id="input" rows="1" placeholder="Ketik tugas untuk MiniDevin… (Enter = kirim, Shift+Enter = baris baru)"></textarea>
-  <button class="btn primary" onclick="send()">Kirim</button>
-</div>
+  <section id="side-panel">
+    <div id="tabs">
+      <button class="active" data-tab="files" onclick="switchTab('files')">📁 Files</button>
+      <button data-tab="terminal" onclick="switchTab('terminal')">💻 Terminal</button>
+      <button data-tab="viewer" onclick="switchTab('viewer')">📄 Viewer</button>
+    </div>
+    <div class="tab-content active" id="tab-files">
+      <div id="tree-head"><span>sandbox/</span><button class="btn" onclick="refreshFiles()">↻ Refresh</button></div>
+      <div id="file-tree"></div>
+    </div>
+    <div class="tab-content" id="tab-terminal"><div id="terminal-log"><span style="color:#8b949e"># Log perintah bash agen akan muncul di sini</span></div></div>
+    <div class="tab-content" id="tab-viewer">
+      <div id="viewer-head">Pilih file di tab Files untuk melihat isinya</div>
+      <div id="viewer-content"></div>
+    </div>
+  </section>
+</main>
 
 <div id="modal">
   <div class="box">
-    <h2>⚙️ Pengaturan LLM</h2>
-    <label>Model</label>
-    <input id="m-model" placeholder="gpt-4o-mini / claude-3-5-sonnet / dll">
-    <label>API Key</label>
-    <input id="m-key" type="password" placeholder="sk-...">
-    <label>Base URL (opsional, untuk OpenRouter/Anthropic-proxy/dll)</label>
-    <input id="m-base" placeholder="https://api.openai.com/v1">
-    <div class="hint">Key disimpan di memori server saja (tidak ditulis ke file). Kompatibel dengan API OpenAI-compatible.</div>
+    <h2 id="modal-title">⚙️ Pengaturan LLM</h2>
+    <div id="settings-body">
+      <label>Model</label>
+      <input id="m-model" placeholder="gpt-4o-mini / claude-sonnet-4 / dll">
+      <label>API Key</label>
+      <input id="m-key" type="password" placeholder="sk-...">
+      <label>Base URL (opsional: OpenRouter, Ollama, dll)</label>
+      <input id="m-base" placeholder="https://api.openai.com/v1">
+      <div class="hint">Konfigurasi disimpan di server (<code>.minidevin/config.json</code>). Kompatibel dengan semua API OpenAI-compatible, termasuk Ollama (<code>http://localhost:11434/v1</code>).</div>
+    </div>
+    <div id="sessions-body" style="display:none">
+      <div id="session-list"></div>
+    </div>
     <div class="row">
-      <button class="btn" onclick="closeSettings()">Batal</button>
-      <button class="btn primary" onclick="saveSettings()">Simpan</button>
+      <button class="btn" onclick="closeModal()">Tutup</button>
+      <button class="btn primary" id="modal-save" onclick="saveSettings()">Simpan</button>
     </div>
   </div>
 </div>
@@ -81,77 +153,204 @@
 const chat = document.getElementById('chat');
 const typing = document.getElementById('typing');
 const input = document.getElementById('input');
-let ws;
+const sendBtn = document.getElementById('send-btn');
+const stopBtn = document.getElementById('stop-btn');
+const termLog = document.getElementById('terminal-log');
+let ws, running = false, sessionId = localStorage.getItem('minidevin_session');
 
 function connect() {
   ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+  ws.onopen = () => ws.send(JSON.stringify({ type: 'init', session_id: sessionId }));
   ws.onmessage = (e) => handleEvent(JSON.parse(e.data));
   ws.onclose = () => setTimeout(connect, 2000);
 }
 connect();
 
-function addMsg(cls, text) {
-  const d = document.createElement('div');
-  d.className = 'msg ' + cls;
-  d.textContent = text;
-  chat.appendChild(d);
-  scroll();
+function md(text) {
+  try {
+    if (window.marked && window.DOMPurify) return DOMPurify.sanitize(marked.parse(text));
+  } catch (e) {}
+  const d = document.createElement('div'); d.textContent = text;
+  return d.innerHTML.replace(/\n/g, '<br>');
 }
 
-function addAction(tool, args, obs) {
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function addMsg(cls, text, isMd) {
   const d = document.createElement('div');
-  d.className = 'action' + (obs ? ' obs' : '');
-  const label = { run_bash: '$ bash', write_file: '📝 write_file', read_file: '📖 read_file', finish: '✅ finish' }[tool] || tool;
+  d.className = 'msg ' + cls;
+  if (isMd) d.innerHTML = md(text); else d.textContent = text;
+  chat.appendChild(d); scrollChat();
+}
+
+function addBlock(tool, args, obs) {
+  const d = document.createElement('details');
+  d.className = 'block' + (obs ? ' obs' : '');
+  d.open = true;
+  const label = { run_bash: '$ bash', write_file: '📝 write_file', edit_file: '✏️ edit_file', read_file: '📖 read_file', list_files: '📂 list_files', finish: '✅ finish' }[tool] || tool;
   let body;
-  if (obs) body = obs;
+  if (obs !== undefined) body = obs;
   else if (tool === 'run_bash') body = args.command;
-  else if (tool === 'write_file') body = args.path + '\n\n' + (args.content || '').slice(0, 800);
+  else if (tool === 'write_file') body = args.path + '\n\n' + (args.content || '').slice(0, 600);
+  else if (tool === 'edit_file') body = args.path + '\n\n- ' + (args.old_str || '').slice(0, 300) + '\n+ ' + (args.new_str || '').slice(0, 300);
   else body = JSON.stringify(args, null, 2);
-  d.innerHTML = '<div class="head"></div><pre></pre>';
-  d.querySelector('.head').textContent = label;
+  d.innerHTML = '<summary></summary><pre></pre>';
+  d.querySelector('summary').textContent = label;
   d.querySelector('pre').textContent = body;
-  chat.appendChild(d);
-  scroll();
+  chat.appendChild(d); scrollChat();
+}
+
+function termAppend(cmd, out) {
+  if (termLog.querySelector('span')) termLog.innerHTML = '';
+  const c = document.createElement('div'); c.className = 'cmd'; c.textContent = '$ ' + cmd;
+  const o = document.createElement('div'); o.className = 'out'; o.textContent = out;
+  termLog.appendChild(c); termLog.appendChild(o);
+  termLog.parentElement.scrollTop = termLog.parentElement.scrollHeight;
 }
 
 function handleEvent(ev) {
-  if (ev.type === 'thought') addMsg('thought', '💭 ' + ev.content);
-  else if (ev.type === 'message') { addMsg('agent', ev.content); typing.style.display = 'none'; }
-  else if (ev.type === 'action') addAction(ev.tool, ev.args);
-  else if (ev.type === 'observation') addAction(ev.tool, {}, ev.content);
-  else if (ev.type === 'error') { addMsg('error', '⚠️ ' + ev.content); typing.style.display = 'none'; }
-  else if (ev.type === 'done') typing.style.display = 'none';
+  switch (ev.type) {
+    case 'session':
+      sessionId = ev.session_id;
+      localStorage.setItem('minidevin_session', sessionId);
+      chat.querySelectorAll('.msg, details').forEach((n, i) => { if (i > 0) n.remove(); });
+      termLog.innerHTML = '<span style="color:#8b949e"># Log perintah bash agen akan muncul di sini</span>';
+      (ev.events || []).forEach(renderEvent);
+      refreshFiles();
+      break;
+    case 'user': addMsg('user', ev.content); break;
+    case 'thought': addMsg('thought', '💭 ' + ev.content); break;
+    case 'message': addMsg('agent', ev.content, true); setRunning(false); break;
+    case 'action': addBlock(ev.tool, ev.args); if (ev.tool === 'run_bash') termAppend(ev.args.command, '…'); break;
+    case 'observation':
+      addBlock(ev.tool, {}, ev.content);
+      if (ev.tool === 'run_bash') { const outs = termLog.querySelectorAll('.out'); if (outs.length) outs[outs.length-1].textContent = ev.content; }
+      if (['write_file','edit_file','run_bash'].includes(ev.tool)) refreshFiles();
+      break;
+    case 'error': addMsg('error', '⚠️ ' + ev.content); setRunning(false); break;
+    case 'step': typing.textContent = `🤖 MiniDevin sedang bekerja… (langkah ${ev.step})`; break;
+    case 'done':
+      if (ev.prompt_tokens) typing.textContent = `✅ Selesai — ${ev.prompt_tokens + ev.completion_tokens} token terpakai`;
+      setRunning(false);
+      refreshFiles();
+      break;
+  }
 }
 
-function scroll() { chat.parentElement.scrollTop = chat.parentElement.scrollHeight; window.scrollTo(0, document.body.scrollHeight); chat.scrollTop = chat.scrollHeight; }
+function renderEvent(ev) {
+  if (ev.type === 'message') addMsg('agent', ev.content, true);
+  else if (ev.type === 'error') addMsg('error', '⚠️ ' + ev.content);
+  else handleEvent(ev);
+}
+
+function scrollChat() { chat.scrollTop = chat.scrollHeight; }
+
+function setRunning(v) {
+  running = v;
+  sendBtn.style.display = v ? 'none' : '';
+  stopBtn.style.display = v ? '' : 'none';
+  typing.style.display = v ? 'block' : (typing.textContent.startsWith('✅') ? 'block' : 'none');
+  if (v) typing.textContent = '🤖 MiniDevin sedang bekerja…';
+}
 
 function send() {
   const text = input.value.trim();
-  if (!text || !ws || ws.readyState !== 1) return;
+  if (!text || !ws || ws.readyState !== 1 || running) return;
   addMsg('user', text);
   input.value = '';
-  typing.style.display = 'block';
+  setRunning(true);
   ws.send(JSON.stringify({ type: 'chat', message: text }));
 }
+
+function stop() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'stop' })); }
+function newSession() { if (ws && ws.readyState === 1 && !running) ws.send(JSON.stringify({ type: 'new_session' })); }
 
 input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
 });
 
+function switchTab(name) {
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
+}
+
+async function refreshFiles() {
+  try {
+    const tree = await (await fetch('/api/files')).json();
+    const el = document.getElementById('file-tree');
+    el.innerHTML = '';
+    const ul = document.createElement('ul');
+    (tree.children || []).forEach(n => ul.appendChild(renderNode(n, '')));
+    el.appendChild(ul);
+  } catch (e) {}
+}
+
+function renderNode(node, prefix) {
+  const li = document.createElement('li');
+  li.className = node.type;
+  const path = prefix ? prefix + '/' + node.name : node.name;
+  const span = document.createElement('span');
+  span.className = 'node';
+  span.textContent = (node.type === 'dir' ? '📁 ' : '📄 ') + node.name;
+  if (node.type === 'file') span.onclick = () => viewFile(path);
+  li.appendChild(span);
+  if (node.children && node.children.length) {
+    const ul = document.createElement('ul');
+    node.children.forEach(c => ul.appendChild(renderNode(c, path)));
+    li.appendChild(ul);
+  }
+  return li;
+}
+
+async function viewFile(path) {
+  const r = await (await fetch('/api/file?path=' + encodeURIComponent(path))).json();
+  document.getElementById('viewer-head').textContent = r.error ? '⚠️ ' + r.error : 'sandbox/' + r.path;
+  document.getElementById('viewer-content').textContent = r.content || '';
+  switchTab('viewer');
+}
+
 async function refreshStatus() {
   const s = await (await fetch('/api/status')).json();
-  document.getElementById('status-dot').className = s.configured ? 'ok' : '';
-  document.getElementById('status-dot').id = 'status-dot';
-  document.querySelector('#status-dot').classList.toggle('ok', s.configured);
+  document.getElementById('status-dot').classList.toggle('ok', s.configured);
+  document.getElementById('model-badge').textContent = s.configured ? s.model : 'belum dikonfigurasi';
   if (s.configured) {
     document.getElementById('m-model').value = s.model;
     document.getElementById('m-base').value = s.base_url;
   }
 }
 refreshStatus();
+refreshFiles();
 
-function openSettings() { document.getElementById('modal').classList.add('open'); }
-function closeSettings() { document.getElementById('modal').classList.remove('open'); }
+function openSettings() {
+  document.getElementById('modal-title').textContent = '⚙️ Pengaturan LLM';
+  document.getElementById('settings-body').style.display = '';
+  document.getElementById('sessions-body').style.display = 'none';
+  document.getElementById('modal-save').style.display = '';
+  document.getElementById('modal').classList.add('open');
+}
+
+async function openSessions() {
+  document.getElementById('modal-title').textContent = '🕘 Riwayat Percakapan';
+  document.getElementById('settings-body').style.display = 'none';
+  document.getElementById('sessions-body').style.display = '';
+  document.getElementById('modal-save').style.display = 'none';
+  const list = document.getElementById('session-list');
+  const sessions = await (await fetch('/api/sessions')).json();
+  list.innerHTML = sessions.length ? '' : '<div class="hint">Belum ada riwayat.</div>';
+  sessions.forEach(s => {
+    const d = document.createElement('div');
+    d.className = 'sitem';
+    d.textContent = s.title + ' — ' + new Date(s.updated * 1000).toLocaleString('id-ID');
+    d.onclick = () => {
+      closeModal();
+      if (ws && ws.readyState === 1 && !running) ws.send(JSON.stringify({ type: 'init', session_id: s.id }));
+    };
+    list.appendChild(d);
+  });
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
 async function saveSettings() {
   await fetch('/api/settings', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -161,7 +360,7 @@ async function saveSettings() {
       base_url: document.getElementById('m-base').value,
     })
   });
-  closeSettings();
+  closeModal();
   refreshStatus();
 }
 </script>
