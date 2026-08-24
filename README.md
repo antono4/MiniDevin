@@ -62,6 +62,12 @@ python3 -m uvicorn minidevin.server:app --host 0.0.0.0 --port 12000
 
 Buka `http://localhost:12000` → ⚙️ Settings → isi Model + API Key (+ Base URL untuk OpenRouter/Ollama).
 
+## Frontend di GitHub Pages
+
+`index.html` di root repo adalah salinan deployment dari `minidevin/static/index.html`, disajikan via GitHub Pages di **https://antono4.github.io/MiniDevin/**. Karena Pages hanya hosting statis, frontend meminta **Backend URL** (alamat server `uvicorn` yang berjalan) saat pertama dibuka — tersimpan di localStorage. Server sudah mengaktifkan CORS (`allow_origins=["*"]`) agar REST API bisa diakses lintas origin; WebSocket tidak dibatasi origin.
+
+Saat mengubah `minidevin/static/index.html`, sinkronkan salinannya: `cp minidevin/static/index.html index.html`.
+
 ## Perbandingan dengan OpenHands
 
 | Aspek | OpenHands | MiniDevin |
