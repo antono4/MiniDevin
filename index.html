@@ -3,295 +3,188 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🐚 MiniDevin — AI Software Engineer</title>
+<title>PuterChat — AI Chat (Puter.js)</title>
+<script src="https://js.puter.com/v2/"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <style>
   :root {
-    --bg: #0d1117; --bg2: #161b22; --border: #30363d; --text: #e6edf3;
-    --muted: #8b949e; --accent: #58a6ff; --termbg: #010409; --user-bg: #1f6feb;
-    --agent-bg: #161b22; --err-bg: #3d1d1d; --err-border: #f85149; --err-text: #ffa198;
-    --plan-bg: #1c1430; --plan-border: #8957e5;
+    --bg: #0d1117; --bg2: #161b22; --bg3: #1c2129; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+    --user-bg: #1f6feb; --green: #238636; --green-h: #2ea043;
+    --err-bg: #3d1d1d; --err-border: #f85149; --err-text: #ffa198;
   }
   [data-theme="light"] {
-    --bg: #ffffff; --bg2: #f6f8fa; --border: #d0d7de; --text: #1f2328;
-    --muted: #59636e; --accent: #0969da; --termbg: #f6f8fa; --user-bg: #0969da;
-    --agent-bg: #f6f8fa; --err-bg: #ffebe9; --err-border: #d1242f; --err-text: #d1242f;
-    --plan-bg: #fbefff; --plan-border: #a371f7;
+    --bg: #ffffff; --bg2: #f6f8fa; --bg3: #eaeef2; --border: #d0d7de;
+    --text: #1f2328; --muted: #59636e; --accent: #0969da;
+    --user-bg: #0969da;
+    --err-bg: #ffebe9; --err-border: #d1242f; --err-text: #d1242f;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; overflow: hidden; }
-  header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-  header h1 { font-size: 17px; font-weight: 600; }
-  .badge { font-size: 11px; background: color-mix(in srgb, var(--bg2) 50%, var(--border)); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; color: var(--muted); }
+  body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; overflow: hidden; }
+
+  /* ---------- sidebar ---------- */
+  #sidebar { width: 264px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; transition: margin-left .2s; }
+  #sidebar.hidden { margin-left: -264px; }
+  .sb-head { padding: 14px 14px 10px; display: flex; align-items: center; gap: 8px; }
+  .sb-head .logo { font-size: 20px; }
+  .sb-head b { font-size: 15px; }
+  .sb-new { margin: 4px 14px 10px; background: var(--green); color: #fff; border: none; border-radius: 8px; padding: 9px; font-size: 13.5px; cursor: pointer; font-weight: 600; }
+  .sb-new:hover { background: var(--green-h); }
+  #convo-list { flex: 1; overflow-y: auto; padding: 0 8px; }
+  .convo { padding: 8px 10px; border-radius: 8px; font-size: 13px; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+  .convo:hover { background: var(--bg3); }
+  .convo.active { background: var(--bg3); }
+  .convo .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .convo .d { background: none; border: none; color: var(--err-border); cursor: pointer; visibility: hidden; font-size: 13px; }
+  .convo:hover .d { visibility: visible; }
+  .sb-foot { padding: 10px 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+  .sb-foot a { color: var(--accent); text-decoration: none; }
+
+  /* ---------- main ---------- */
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #topbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; }
+  .icon-btn { background: none; border: none; color: var(--muted); font-size: 17px; cursor: pointer; padding: 6px 8px; border-radius: 8px; }
+  .icon-btn:hover { background: var(--bg3); color: var(--text); }
   .spacer { flex: 1; }
-  .btn { background: color-mix(in srgb, var(--bg2) 50%, var(--border)); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 6px 14px; cursor: pointer; font-size: 13px; }
-  .btn:hover { background: var(--border); }
-  .btn.primary { background: #238636; border-color: #238636; color: #fff; }
-  .btn.primary:hover { background: #2ea043; }
-  .btn.danger { background: #da3633; border-color: #da3633; color: #fff; }
-  #status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--err-border); }
-  #status-dot.ok { background: #3fb950; }
+  select.model { background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 7px 10px; font-size: 12.5px; max-width: 250px; cursor: pointer; }
+  #user-chip { font-size: 12px; color: var(--muted); background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; display: none; }
 
-  main { flex: 1; display: flex; min-height: 0; }
-  #chat-panel { flex: 1.2; display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--border); }
-  #side-panel { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg); }
+  /* ---------- home (welcome) ---------- */
+  #home { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; }
+  #home .hands { font-size: 52px; margin-bottom: 18px; }
+  #home h2 { font-size: 30px; font-weight: 600; margin-bottom: 10px; }
+  #home p.sub { color: var(--muted); font-size: 14.5px; margin-bottom: 30px; text-align: center; max-width: 520px; line-height: 1.6; }
+  #suggests { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 760px; }
+  .sugg { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; font-size: 13px; color: var(--text); cursor: pointer; width: 230px; text-align: left; }
+  .sugg:hover { border-color: var(--accent); }
+  .sugg .ico { font-size: 17px; display: block; margin-bottom: 6px; }
 
-  #chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-  .msg { max-width: 88%; padding: 10px 14px; border-radius: 10px; line-height: 1.55; word-break: break-word; font-size: 14px; }
-  .msg.user { align-self: flex-end; background: var(--user-bg); color: #fff; white-space: pre-wrap; }
-  .msg.agent { align-self: flex-start; background: var(--bg2); border: 1px solid var(--border); }
-  .msg.thought { align-self: flex-start; background: transparent; border: 1px dashed var(--border); color: var(--muted); font-style: italic; font-size: 13px; }
-  .msg.error { align-self: flex-start; background: var(--err-bg); border: 1px solid var(--err-border); color: var(--err-text); }
-  .msg.plan { align-self: flex-start; background: var(--plan-bg); border: 1px solid var(--plan-border); }
-  .msg.agent pre, .msg.plan pre { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; overflow-x: auto; margin: 6px 0; font-size: 12.5px; }
-  .msg.agent code, .msg.plan code { font-family: 'Cascadia Code', monospace; font-size: 12.5px; color: var(--accent); }
-  .msg.agent p, .msg.plan p { margin: 4px 0; }
-  .msg.agent ul, .msg.agent ol, .msg.plan ul, .msg.plan ol { margin: 4px 0 4px 20px; }
-
-  details.block { align-self: flex-start; width: 88%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-size: 13px; }
-  details.block summary { background: var(--bg2); padding: 6px 12px; color: var(--accent); font-family: monospace; cursor: pointer; list-style: none; user-select: none; }
-  details.block summary::before { content: '▸ '; }
-  details.block[open] summary::before { content: '▾ '; }
-  details.block pre { padding: 10px 12px; font-family: 'Cascadia Code', monospace; font-size: 12.5px; overflow: auto; color: var(--accent); white-space: pre-wrap; max-height: 300px; }
-  details.block.obs pre { color: #2ea043; }
-
-  #typing { display: none; padding: 6px 16px; color: var(--muted); font-size: 13px; flex-shrink: 0; }
-  #inputbar { background: var(--bg2); border-top: 1px solid var(--border); padding: 12px 16px; display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
-  #input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 10px 14px; font-size: 14px; resize: none; font-family: inherit; }
-  #input:focus { outline: none; border-color: var(--accent); }
-  .toggle { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; cursor: pointer; white-space: nowrap; }
-  .toggle input { accent-color: var(--plan-border); }
-
-  #tabs { display: flex; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  #tabs button { background: none; border: none; color: var(--muted); padding: 10px 16px; cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent; }
-  #tabs button.active { color: var(--text); border-bottom-color: #e36209; }
-  .tab-content { flex: 1; overflow: auto; display: none; padding: 10px; }
-  .tab-content.active { display: block; }
-
-  #file-tree { font-family: 'Cascadia Code', monospace; font-size: 13px; }
-  #file-tree ul { list-style: none; padding-left: 16px; }
-  #file-tree > ul { padding-left: 4px; }
-  #file-tree li { padding: 2px 0; }
-  #file-tree .node { cursor: pointer; border-radius: 4px; padding: 2px 6px; display: inline-block; }
-  #file-tree .node:hover { background: color-mix(in srgb, var(--bg2) 50%, var(--border)); }
-  #file-tree .dir > .node { color: var(--accent); }
-  #file-tree .file > .node { color: var(--text); }
-  #tree-head { display: flex; justify-content: space-between; align-items: center; padding: 2px 6px 8px; color: var(--muted); font-size: 12px; gap: 6px; }
-  #chips { display: flex; gap: 6px; padding: 8px 16px 0; flex-wrap: wrap; flex-shrink: 0; }
-  .chip { background: var(--bg2); border: 1px solid var(--border); color: var(--muted); border-radius: 20px; padding: 4px 12px; cursor: pointer; font-size: 12px; }
-  .chip:hover { color: var(--text); border-color: var(--accent); }
-  select.btn { max-width: 150px; }
-
-  #terminal-log, #git-log { font-family: 'Cascadia Code', monospace; font-size: 12.5px; background: var(--termbg); border-radius: 8px; padding: 12px; min-height: 100%; white-space: pre-wrap; word-break: break-word; }
-  #terminal-log .cmd { color: var(--accent); }
-  #terminal-log .out { color: #2ea043; }
-  #git-log { color: var(--plan-border); }
-
-  #viewer-head { color: var(--muted); font-size: 12px; padding: 2px 6px 8px; font-family: monospace; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-  #viewer-content { width: 100%; min-height: 70vh; font-family: 'Cascadia Code', monospace; font-size: 12.5px; background: var(--termbg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; white-space: pre; color: var(--text); resize: vertical; }
-  #viewer-content:focus { outline: none; border-color: var(--accent); }
-  #git-log { min-height: auto; max-height: 40%; overflow-y: auto; }
-  .commit { padding: 4px 6px; border-radius: 4px; cursor: pointer; color: var(--plan-border); font-family: 'Cascadia Code', monospace; font-size: 12.5px; }
-  .commit:hover { background: color-mix(in srgb, var(--bg2) 50%, var(--border)); }
-  .commit .sha { color: var(--accent); }
-  #git-diff { font-family: 'Cascadia Code', monospace; font-size: 12px; background: var(--termbg); border-radius: 8px; padding: 12px; margin-top: 10px; white-space: pre-wrap; word-break: break-word; color: var(--text); max-height: 55vh; overflow-y: auto; }
-  .msg.thought.streaming { border-color: var(--plan-border); }
-
-  #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); align-items: center; justify-content: center; z-index: 10; }
-  #modal.open { display: flex; }
-  #modal .box { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 24px; width: 440px; }
-  #modal h2 { font-size: 16px; margin-bottom: 16px; }
-  #modal label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
-  #modal input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px 10px; font-size: 13px; }
-  #modal .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-  .hint { font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
-  #session-list { max-height: 180px; overflow-y: auto; margin-top: 8px; }
-  #session-search { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px 10px; font-size: 13px; }
-  .sitem { display: flex; align-items: center; gap: 6px; }
-  .sitem .stitle { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sitem .sdel { background: none; border: none; color: var(--err-border); cursor: pointer; font-size: 14px; visibility: hidden; }
-  .sitem:hover .sdel { visibility: visible; }
-  .copy-btn { position: absolute; top: 6px; right: 6px; background: var(--bg2); border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; opacity: 0; transition: opacity .15s; }
-  .msg.agent pre, details.block pre { position: relative; }
+  /* ---------- chat ---------- */
+  #chat-wrap { flex: 1; overflow-y: auto; display: none; }
+  #chat { max-width: 780px; margin: 0 auto; padding: 24px 20px 10px; display: flex; flex-direction: column; gap: 18px; }
+  .msg { display: flex; gap: 12px; line-height: 1.6; font-size: 14.5px; word-break: break-word; }
+  .msg .avatar { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  .msg.user .avatar { background: var(--user-bg); color: #fff; }
+  .msg.ai .avatar { background: var(--bg3); border: 1px solid var(--border); }
+  .msg .body { flex: 1; min-width: 0; padding-top: 3px; }
+  .msg.user .body { color: var(--text); white-space: pre-wrap; }
+  .msg.error .body { color: var(--err-text); background: var(--err-bg); border: 1px solid var(--err-border); border-radius: 8px; padding: 10px 12px; }
+  .msg.ai pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; overflow-x: auto; margin: 8px 0; font-size: 12.5px; position: relative; }
+  .msg.ai code { font-family: 'Cascadia Code', ui-monospace, monospace; font-size: 12.5px; color: var(--accent); }
+  .msg.ai p { margin: 5px 0; }
+  .msg.ai ul, .msg.ai ol { margin: 5px 0 5px 22px; }
+  .msg.ai img { max-width: 100%; border-radius: 10px; margin-top: 10px; }
+  .copy-btn { position: absolute; top: 6px; right: 6px; background: var(--bg2); border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 2px 8px; font-size: 11px; cursor: pointer; opacity: 0; transition: opacity .15s; }
   pre:hover .copy-btn { opacity: 1; }
-  #slash-menu { position: fixed; bottom: 90px; left: 130px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; display: none; z-index: 20; min-width: 320px; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
-  #slash-menu .sitem2 { padding: 8px 12px; cursor: pointer; font-size: 13px; color: var(--text); }
-  #slash-menu .sitem2:hover, #slash-menu .sitem2.sel { background: color-mix(in srgb, var(--bg2) 50%, var(--border)); }
-  #slash-menu .scmd { font-family: monospace; color: var(--accent); }
-  #agent-state { font-size: 11px; color: var(--muted); }
-  .msg.delegation { align-self: flex-start; background: var(--plan-bg); border: 1px dashed var(--plan-border); font-size: 13px; }
-  .confirm-box { align-self: flex-start; width: 88%; background: var(--bg2); border: 1px solid #e36209; border-radius: 8px; padding: 12px; font-size: 13px; }
-  .confirm-box .chead { color: #e36209; font-weight: 600; margin-bottom: 6px; }
-  .confirm-box pre { background: var(--termbg); border-radius: 6px; padding: 8px; margin: 8px 0; font-size: 12px; white-space: pre-wrap; max-height: 150px; overflow-y: auto; }
-  .confirm-box .cbtns { display: flex; gap: 8px; }
-  #session-list .sitem { padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--text); }
-  #session-list .sitem:hover { background: color-mix(in srgb, var(--bg2) 50%, var(--border)); }
+  .cursor { display: inline-block; width: 8px; height: 15px; background: var(--accent); vertical-align: text-bottom; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  #typing { display: none; max-width: 780px; margin: 0 auto; padding: 0 20px 6px; color: var(--muted); font-size: 13px; }
+
+  /* ---------- composer ---------- */
+  #composer-wrap { padding: 12px 20px 18px; }
+  #composer { max-width: 780px; margin: 0 auto; background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 10px 12px; }
+  #composer:focus-within { border-color: var(--accent); }
+  #input { width: 100%; background: none; border: none; outline: none; color: var(--text); font-size: 14.5px; resize: none; font-family: inherit; max-height: 160px; padding: 4px 6px; }
+  #composer .row { display: flex; align-items: center; gap: 8px; padding: 4px 2px 0; }
+  .mini-toggle { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 12px; cursor: pointer; }
+  .mini-toggle input { accent-color: var(--accent); }
+  #send-btn { margin-left: auto; width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--green); color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  #send-btn:hover { background: var(--green-h); }
+  #send-btn:disabled { background: var(--bg3); color: var(--muted); cursor: default; }
+
+  @media (max-width: 720px) {
+    #sidebar { position: absolute; z-index: 10; height: 100%; box-shadow: 4px 0 20px rgba(0,0,0,.4); }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>🐚 MiniDevin</h1>
-  <span class="badge" id="model-badge">v5</span>
-  <select class="btn" id="ws-select" onchange="switchWorkspace(this.value)" title="Workspace"></select>
-  <span class="spacer"></span>
-  <button class="btn" onclick="toggleTheme()" title="Ganti tema">🌓</button>
-  <button class="btn" onclick="exportSession()" title="Ekspor percakapan ke Markdown">📤 Ekspor</button>
-  <button class="btn" onclick="newSession()">＋ Baru</button>
-  <button class="btn" onclick="openSessions()">🕘 Riwayat</button>
-  <span id="agent-state"></span>
-  <span id="status-dot"></span>
-  <button class="btn" onclick="openSettings()">⚙️ Settings</button>
-</header>
 
-<main>
-  <section id="chat-panel">
-    <div id="chat">
-      <div class="msg agent"><p>Halo! Saya <strong>MiniDevin v7</strong> — kini dengan arsitektur ala OpenHands: <strong>event stream</strong> append-only, <strong>runtime</strong> eksekusi, <strong>multi-agent</strong> (💻 Coder · 🔍 Researcher · 🧠 Planner dengan delegasi), dan <strong>mode konfirmasi</strong> 🛡️ (ketik <code>/confirm</code>).</p></div>
-    </div>
-    <div id="typing">🤖 MiniDevin sedang bekerja…</div>
-    <div id="chips">
-      <button class="chip" onclick="useTemplate(this)">🌐 Buatkan REST API FastAPI sederhana dengan CRUD dan jalankan tesnya</button>
-      <button class="chip" onclick="useTemplate(this)">📊 Analisis data CSV yang saya upload dan buatkan grafik matplotlib</button>
-      <button class="chip" onclick="useTemplate(this)">🕸️ Riset topik ini lewat web lalu buatkan ringkasan: [topik]</button>
-      <button class="chip" onclick="useTemplate(this)">🐛 Debug kode di workspace ini dan perbaiki errornya</button>
-      <button class="chip" onclick="useTemplate(this)">/confirm</button>
-    </div>
-    <div id="inputbar">
-      <label class="toggle" title="Planner menyusun rencana dulu, lalu coder mengeksekusinya">
-        <input type="checkbox" id="plan-mode"> 🧠 Rencana
-      </label>
-      <textarea id="input" rows="1" placeholder="Ketik tugas untuk MiniDevin… (Enter = kirim)"></textarea>
-      <button class="btn" id="mic-btn" style="display:none" onclick="toggleMic()" title="Voice input">🎤</button>
-      <button class="btn primary" id="send-btn" onclick="send()">Kirim</button>
-      <button class="btn danger" id="stop-btn" style="display:none" onclick="stop()">⏹ Stop</button>
-    </div>
-  </section>
+<aside id="sidebar">
+  <div class="sb-head"><span class="logo">🐱</span><b>PuterChat</b></div>
+  <button class="sb-new" onclick="newChat()">＋ Percakapan baru</button>
+  <div id="convo-list"></div>
+  <div class="sb-foot">Powered by <a href="https://puter.com" target="_blank">Puter</a> · <a href="https://github.com/antono4/MiniDevin/tree/master/puterchat" target="_blank">Source</a></div>
+</aside>
 
-  <section id="side-panel">
-    <div id="tabs">
-      <button class="active" data-tab="files" onclick="switchTab('files')">📁 Files</button>
-      <button data-tab="terminal" onclick="switchTab('terminal')">💻 Terminal</button>
-      <button data-tab="viewer" onclick="switchTab('viewer')">📄 Viewer</button>
-      <button data-tab="git" onclick="switchTab('git')">🌿 Git</button>
+<div id="main">
+  <div id="topbar">
+    <button class="icon-btn" onclick="toggleSidebar()" title="Sidebar">☰</button>
+    <select class="model" id="model-select" title="Model AI"></select>
+    <span class="spacer"></span>
+    <span id="user-chip"></span>
+    <button class="icon-btn" id="auth-btn" onclick="toggleAuth()" title="Masuk / Keluar">👤</button>
+    <button class="icon-btn" onclick="toggleTheme()" title="Tema">🌓</button>
+  </div>
+
+  <div id="home">
+    <div class="hands">🙌</div>
+    <h2>Mari mulai mengobrol!</h2>
+    <p class="sub">AI chat dengan 500+ model via Puter.js — tanpa API key, tanpa backend. Login dengan akun Puter Anda dan mulai bertanya, atau buat gambar dengan perintah <b>/gambar</b>.</p>
+    <div id="suggests">
+      <button class="sugg" onclick="useSugg(this)"><span class="ico">💡</span>Jelaskan konsep rekursi dengan contoh sederhana</button>
+      <button class="sugg" onclick="useSugg(this)"><span class="ico">📝</span>Tuliskan puisi pendek tentang senja di pantai</button>
+      <button class="sugg" onclick="useSugg(this)"><span class="ico">💻</span>Buatkan fungsi Python untuk cek bilangan prima</button>
+      <button class="sugg" onclick="useSugg(this)"><span class="ico">🎨</span>/gambar kucing astronot mengambang di luar angkasa</button>
     </div>
-    <div class="tab-content active" id="tab-files">
-      <div id="tree-head">
-        <span id="tree-label">sandbox/</span>
-        <span>
-          <button class="btn" onclick="document.getElementById('upload-input').click()">⬆ Upload</button>
-          <button class="btn" onclick="refreshFiles()">↻</button>
-        </span>
+  </div>
+
+  <div id="chat-wrap"><div id="chat"></div></div>
+  <div id="typing">🤖 AI sedang mengetik…</div>
+
+  <div id="composer-wrap">
+    <div id="composer">
+      <textarea id="input" rows="1" placeholder="Ketik pesan untuk AI… (Enter = kirim)"></textarea>
+      <div class="row">
+        <label class="mini-toggle"><input type="checkbox" id="stream-mode" checked> ⚡ Stream</label>
+        <button id="send-btn" onclick="send()" title="Kirim">➤</button>
       </div>
-      <input type="file" id="upload-input" style="display:none" onchange="uploadFile(this)">
-      <div id="file-tree"></div>
-    </div>
-    <div class="tab-content" id="tab-terminal"><div id="terminal-log"><span style="color:#8b949e"># Log perintah bash agen akan muncul di sini</span></div></div>
-    <div class="tab-content" id="tab-viewer">
-      <div id="viewer-head">
-        <span id="viewer-path">Pilih file di tab Files untuk melihat isinya</span>
-        <span id="viewer-actions" style="display:none">
-          <button class="btn" onclick="saveViewedFile()">💾 Simpan</button>
-          <button class="btn" onclick="downloadViewedFile()">⬇ Unduh</button>
-        </span>
-      </div>
-      <textarea id="viewer-content" spellcheck="false" placeholder=""></textarea>
-    </div>
-    <div class="tab-content" id="tab-git">
-      <div id="git-log">Belum ada snapshot. MiniDevin melakukan commit otomatis setelah setiap tugas selesai.</div>
-      <div id="git-diff"></div>
-    </div>
-  </section>
-</main>
-
-<div id="slash-menu"></div>
-<div id="modal">
-  <div class="box">
-    <h2 id="modal-title">⚙️ Pengaturan LLM</h2>
-    <div id="settings-body">
-      <label>Model</label>
-      <input id="m-model" placeholder="gpt-4o-mini / claude-sonnet-4 / dll">
-      <label>API Key</label>
-      <input id="m-key" type="password" placeholder="sk-...">
-      <label>Base URL (opsional: OpenRouter, Ollama, dll)</label>
-      <input id="m-base" placeholder="https://api.openai.com/v1">
-      <label>Backend URL (hanya untuk GitHub Pages — alamat server MiniDevin)</label>
-      <input id="m-backend" placeholder="https://server-minidevin-anda.example.com">
-      <div class="hint">Konfigurasi disimpan di server (<code>.minidevin/config.json</code>). Kompatibel dengan semua API OpenAI-compatible, termasuk Ollama (<code>http://localhost:11434/v1</code>).</div>
-    </div>
-    <div id="sessions-body" style="display:none">
-      <input id="session-search" placeholder="🔍 Cari di riwayat…" oninput="renderSessionList()">
-      <div id="session-list"></div>
-    </div>
-    <div class="row">
-      <button class="btn" onclick="closeModal()">Tutup</button>
-      <button class="btn primary" id="modal-save" onclick="saveSettings()">Simpan</button>
     </div>
   </div>
 </div>
 
 <script>
-const chat = document.getElementById('chat');
+const chatEl = document.getElementById('chat');
+const chatWrap = document.getElementById('chat-wrap');
+const home = document.getElementById('home');
 const typing = document.getElementById('typing');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('send-btn');
-const stopBtn = document.getElementById('stop-btn');
-const termLog = document.getElementById('terminal-log');
-let ws, running = false, sessionId = localStorage.getItem('minidevin_session');
-let streamEl = null, streamText = '', viewedPath = null;
-let currentWs = localStorage.getItem('minidevin_ws') || 'default';
+const modelSelect = document.getElementById('model-select');
+const streamMode = document.getElementById('stream-mode');
+const convoList = document.getElementById('convo-list');
 
-// Backend URL: kosong = same-origin (saat disajikan oleh server MiniDevin).
-// Di GitHub Pages, isi dengan URL server MiniDevin yang berjalan.
-let BACKEND = (localStorage.getItem('minidevin_backend') || '').replace(/\/+$/, '');
-function apiUrl(p) { return BACKEND + p; }
-function wsUrl() {
-  if (BACKEND) {
-    const proto = BACKEND.startsWith('https') ? 'wss://' : 'ws://';
-    return proto + BACKEND.replace(/^https?:\/\//, '') + '/ws';
-  }
-  return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
-}
+const FALLBACK_MODELS = ['gpt-5-nano', 'gpt-4o-mini', 'claude-sonnet-4', 'gemini-2.5-flash', 'deepseek-chat', 'grok-4'];
+let conversations = {};   // id -> {title, messages:[{role,content}]}
+let currentId = null;
+let busy = false;
 
-// Voice input (Web Speech API)
-let recog = null, micOn = false;
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (SR) {
-  document.getElementById('mic-btn').style.display = '';
-  recog = new SR();
-  recog.lang = 'id-ID';
-  recog.interimResults = true;
-  recog.onresult = (e) => {
-    input.value = Array.from(e.results).map(r => r[0].transcript).join('');
-  };
-  recog.onend = () => { micOn = false; document.getElementById('mic-btn').textContent = '🎤'; };
-}
-function toggleMic() {
-  if (!recog) return;
-  if (micOn) { recog.stop(); micOn = false; document.getElementById('mic-btn').textContent = '🎤'; }
-  else { recog.start(); micOn = true; document.getElementById('mic-btn').textContent = '🔴'; input.focus(); }
-}
-
-// Theme toggle
-function toggleTheme() {
-  const cur = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-  document.documentElement.dataset.theme = cur;
-  localStorage.setItem('minidevin_theme', cur);
-}
-if (localStorage.getItem('minidevin_theme') === 'light') document.documentElement.dataset.theme = 'light';
-
-// Text-to-speech for final agent message
-function speak(text) {
+// ---------- helpers ----------
+function md(text) {
   try {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text.slice(0, 600));
-    u.lang = 'id-ID';
-    speechSynthesis.speak(u);
+    if (window.marked && window.DOMPurify) return DOMPurify.sanitize(marked.parse(text));
   } catch (e) {}
+  const d = document.createElement('div'); d.textContent = text;
+  return d.innerHTML.replace(/\n/g, '<br>');
+}
+function scrollChat() { chatWrap.scrollTop = chatWrap.scrollHeight; }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function addMsg(role, text, isMd) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  const av = document.createElement('div');
+  av.className = 'avatar';
+  av.textContent = role === 'user' ? '🧑' : role === 'error' ? '⚠️' : '🐱';
+  const body = document.createElement('div');
+  body.className = 'body';
+  if (isMd) { body.innerHTML = md(text); addCopyButtons(body); } else body.textContent = text;
+  d.appendChild(av); d.appendChild(body);
+  chatEl.appendChild(d); scrollChat();
+  return body;
 }
 
-// Copy buttons on code blocks (event delegation)
 document.addEventListener('click', (e) => {
   if (e.target.classList && e.target.classList.contains('copy-btn')) {
     const pre = e.target.closest('pre');
@@ -304,459 +197,226 @@ function addCopyButtons(root) {
   root.querySelectorAll('pre').forEach(pre => {
     if (pre.querySelector('.copy-btn')) return;
     const b = document.createElement('button');
-    b.className = 'copy-btn';
-    b.textContent = '📋 Salin';
+    b.className = 'copy-btn'; b.textContent = '📋 Salin';
     pre.appendChild(b);
   });
 }
 
-// Slash commands
-const SLASH_CMDS = [
-  { cmd: '/plan', desc: 'Mode rencana: planner menyusun langkah dulu, lalu coder mengeksekusi' },
-  { cmd: '/web', desc: 'Riset web: agen mengambil halaman/meneliti topik lalu menjawab' },
-  { cmd: '/run', desc: 'Jalankan perintah bash langsung di workspace' },
-  { cmd: '/reset', desc: 'Hapus konteks percakapan dan mulai bersih' },
-  { cmd: '/confirm', desc: 'Aktif/matikan mode konfirmasi (setujui tiap aksi agen)' },
-];
-let slashIdx = 0;
-const slashMenu = document.getElementById('slash-menu');
-function renderSlashMenu(filter) {
-  const items = SLASH_CMDS.filter(c => c.cmd.startsWith(filter));
-  if (!items.length || !filter.startsWith('/')) { slashMenu.style.display = 'none'; return; }
-  slashMenu.innerHTML = '';
-  items.forEach((c, i) => {
-    const d = document.createElement('div');
-    d.className = 'sitem2' + (i === slashIdx ? ' sel' : '');
-    d.innerHTML = '<span class="scmd"></span> — <span class="sdesc"></span>';
-    d.querySelector('.scmd').textContent = c.cmd;
-    d.querySelector('.sdesc').textContent = c.desc;
-    d.onclick = () => { input.value = c.cmd + ' '; slashMenu.style.display = 'none'; input.focus(); };
-    slashMenu.appendChild(d);
-  });
-  slashMenu.style.display = 'block';
+function setBusy(v) {
+  busy = v;
+  sendBtn.disabled = v;
+  typing.style.display = v ? 'block' : 'none';
 }
 
-function connect() {
-  ws = new WebSocket(wsUrl());
-  ws.onopen = () => ws.send(JSON.stringify({ type: 'init', session_id: sessionId, workspace: currentWs }));
-  ws.onmessage = (e) => handleEvent(JSON.parse(e.data));
-  ws.onclose = () => setTimeout(connect, 2000);
+function showHome(show) {
+  home.style.display = show ? 'flex' : 'none';
+  chatWrap.style.display = show ? 'none' : 'block';
 }
-connect();
 
-function md(text) {
+// ---------- sidebar / theme ----------
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('hidden'); }
+function toggleTheme() {
+  const cur = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = cur;
+  localStorage.setItem('puterchat_theme', cur);
+}
+if (localStorage.getItem('puterchat_theme') === 'light') document.documentElement.dataset.theme = 'light';
+if (window.innerWidth < 720) document.getElementById('sidebar').classList.add('hidden');
+
+// ---------- models ----------
+async function loadModels() {
+  let models = FALLBACK_MODELS;
   try {
-    if (window.marked && window.DOMPurify) return DOMPurify.sanitize(marked.parse(text));
+    const list = await puter.ai.listModels();
+    const ids = list.map(m => (typeof m === 'string' ? m : m.id || m.name)).filter(Boolean);
+    if (ids.length) models = ids;
   } catch (e) {}
-  const d = document.createElement('div'); d.textContent = text;
-  return d.innerHTML.replace(/\n/g, '<br>');
+  modelSelect.innerHTML = '';
+  models.forEach(m => {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = m;
+    modelSelect.appendChild(o);
+  });
+  const saved = localStorage.getItem('puterchat_model');
+  modelSelect.value = saved && models.includes(saved) ? saved : models[0];
+}
+modelSelect.onchange = () => localStorage.setItem('puterchat_model', modelSelect.value);
+
+// ---------- auth ----------
+async function refreshAuth() {
+  try {
+    if (puter.auth.isSignedIn()) {
+      const u = await puter.auth.getUser();
+      const chip = document.getElementById('user-chip');
+      chip.style.display = '';
+      chip.textContent = '👤 ' + u.username;
+      document.getElementById('auth-btn').textContent = '🚪';
+    } else {
+      document.getElementById('user-chip').style.display = 'none';
+      document.getElementById('auth-btn').textContent = '👤';
+    }
+  } catch (e) {}
+}
+async function toggleAuth() {
+  try {
+    if (puter.auth.isSignedIn()) await puter.auth.signOut();
+    else await puter.auth.signIn();
+  } catch (e) {}
+  refreshAuth();
+  loadConversations();
 }
 
-function addMsg(cls, text, isMd) {
-  const d = document.createElement('div');
-  d.className = 'msg ' + cls;
-  if (isMd) { d.innerHTML = md(text); addCopyButtons(d); } else d.textContent = text;
-  chat.appendChild(d); scrollChat();
+// ---------- conversations (KV cloud / localStorage) ----------
+async function loadConversations() {
+  conversations = {};
+  try {
+    let raw = null;
+    if (puter.auth.isSignedIn()) raw = await puter.kv.get('puterchat_convos');
+    else raw = localStorage.getItem('puterchat_convos');
+    if (raw) conversations = JSON.parse(raw);
+  } catch (e) {}
+  renderConvoList();
 }
-
-function addBlock(tool, args, obs) {
-  const d = document.createElement('details');
-  d.className = 'block' + (obs ? ' obs' : '');
-  d.open = true;
-  const label = { run_bash: '$ bash', write_file: '📝 write_file', edit_file: '✏️ edit_file', read_file: '📖 read_file', list_files: '📂 list_files', web_fetch: '🌐 web_fetch', git: '🌿 git', finish: '✅ finish' }[tool] || tool;
-  let body;
-  if (obs !== undefined) body = obs;
-  else if (tool === 'run_bash') body = args.command;
-  else if (tool === 'web_fetch') body = args.url;
-  else if (tool === 'write_file') body = args.path + '\n\n' + (args.content || '').slice(0, 600);
-  else if (tool === 'edit_file') body = args.path + '\n\n- ' + (args.old_str || '').slice(0, 300) + '\n+ ' + (args.new_str || '').slice(0, 300);
-  else body = JSON.stringify(args, null, 2);
-  d.innerHTML = '<summary></summary><pre></pre>';
-  d.querySelector('summary').textContent = label;
-  d.querySelector('pre').textContent = body;
-  addCopyButtons(d);
-  chat.appendChild(d); scrollChat();
+async function saveConversations() {
+  const data = JSON.stringify(conversations);
+  try {
+    if (puter.auth.isSignedIn()) await puter.kv.set('puterchat_convos', data);
+    else localStorage.setItem('puterchat_convos', data);
+  } catch (e) {}
 }
-
-function termAppend(cmd, out) {
-  if (termLog.querySelector('span')) termLog.innerHTML = '';
-  const c = document.createElement('div'); c.className = 'cmd'; c.textContent = '$ ' + cmd;
-  const o = document.createElement('div'); o.className = 'out'; o.textContent = out;
-  termLog.appendChild(c); termLog.appendChild(o);
-  termLog.parentElement.scrollTop = termLog.parentElement.scrollHeight;
+function renderConvoList() {
+  convoList.innerHTML = '';
+  const ids = Object.keys(conversations).sort((a, b) => b.localeCompare(a));
+  ids.slice(0, 40).forEach(id => {
+    const c = conversations[id];
+    const d = document.createElement('div');
+    d.className = 'convo' + (id === currentId ? ' active' : '');
+    const t = document.createElement('span');
+    t.className = 't';
+    t.textContent = c.title || 'Percakapan';
+    t.onclick = () => openChat(id);
+    const del = document.createElement('button');
+    del.className = 'd'; del.textContent = '🗑';
+    del.onclick = async (e) => {
+      e.stopPropagation();
+      delete conversations[id];
+      if (id === currentId) newChat();
+      await saveConversations();
+      renderConvoList();
+    };
+    d.appendChild(t); d.appendChild(del);
+    convoList.appendChild(d);
+  });
 }
-
-function handleEvent(ev) {
-  switch (ev.type) {
-    case 'session':
-      sessionId = ev.session_id;
-      currentWs = ev.workspace || currentWs;
-      localStorage.setItem('minidevin_session', sessionId);
-      localStorage.setItem('minidevin_ws', currentWs);
-      syncWsSelect();
-      document.getElementById('tree-label').textContent = 'sandboxes/' + currentWs + '/';
-      chat.querySelectorAll('.msg, details').forEach((n, i) => { if (i > 0) n.remove(); });
-      streamEl = null; streamText = '';
-      termLog.innerHTML = '<span style="color:#8b949e"># Log perintah bash agen akan muncul di sini</span>';
-      (ev.events || []).forEach(renderEvent);
-      refreshFiles(); refreshGit();
-      break;
-    case 'user': addMsg('user', ev.content); break;
-    case 'thought_delta':
-      if (!streamEl) {
-        streamEl = document.createElement('div');
-        streamEl.className = 'msg thought streaming';
-        streamText = '';
-        chat.appendChild(streamEl);
-      }
-      streamText += ev.content;
-      streamEl.textContent = '💭 ' + streamText;
-      scrollChat();
-      break;
-    case 'thought':
-      if (streamEl) {
-        streamEl.classList.remove('streaming');
-        streamEl.textContent = '💭 ' + ev.content;
-        streamEl = null; streamText = '';
-      } else addMsg('thought', '💭 ' + ev.content);
-      break;
-    case 'plan': addMsg('plan', '🧠 **Rencana:**\n\n' + ev.content, true); break;
-    case 'delegation': addMsg('delegation', `🔀 Mendelegasikan ke ${ev.agent}: ${ev.content}`); break;
-    case 'state':
-      document.getElementById('agent-state').textContent =
-        { running: '▶ berjalan', awaiting_confirmation: '⏳ menunggu konfirmasi', finished: '✅ selesai', stopped: '⏹ berhenti', error: '⚠️ error' }[ev.state] || ev.state;
-      break;
-    case 'confirm': showConfirm(ev); break;
-    case 'confirmation_mode':
-      addMsg('agent', ev.enabled ? '🛡️ Mode konfirmasi **AKTIF** — setiap aksi bash/tulis/edit akan meminta persetujuan Anda.' : '🛡️ Mode konfirmasi nonaktif.', true);
-      break;
-    case 'message': addMsg('agent', ev.content, true); setRunning(false); if (ev.content.length < 1200) speak(ev.content); break;
-    case 'action': addBlock(ev.tool, ev.args); if (ev.tool === 'run_bash') termAppend(ev.args.command, '…'); break;
-    case 'observation':
-      addBlock(ev.tool, {}, ev.content);
-      if (ev.tool === 'run_bash') { const outs = termLog.querySelectorAll('.out'); if (outs.length) outs[outs.length-1].textContent = ev.content; }
-      if (['write_file','edit_file','run_bash'].includes(ev.tool)) refreshFiles();
-      if (ev.tool === 'git') refreshGit();
-      break;
-    case 'error': addMsg('error', '⚠️ ' + ev.content); setRunning(false); break;
-    case 'step': typing.textContent = ev.step === 0 ? '🧠 Menyusun rencana…' : `🤖 MiniDevin sedang bekerja… (langkah ${ev.step})`; break;
-    case 'done':
-      if (ev.prompt_tokens) typing.textContent = `✅ Selesai — ${ev.prompt_tokens + ev.completion_tokens} token terpakai`;
-      setRunning(false);
-      refreshFiles(); refreshGit();
-      break;
-  }
+function openChat(id) {
+  currentId = id;
+  chatEl.innerHTML = '';
+  (conversations[id].messages || []).forEach(m => addMsg(m.role, m.content, m.role !== 'user'));
+  showHome(false);
+  renderConvoList();
+  if (window.innerWidth < 720) document.getElementById('sidebar').classList.add('hidden');
 }
-
-function renderEvent(ev) {
-  if (ev.type === 'message') addMsg('agent', ev.content, true);
-  else if (ev.type === 'error') addMsg('error', '⚠️ ' + ev.content);
-  else if (ev.type === 'delegation') addMsg('delegation', `🔀 Mendelegasikan ke ${ev.agent}: ${ev.content}`);
-  else handleEvent(ev);
+function newChat() {
+  currentId = null;
+  chatEl.innerHTML = '';
+  showHome(true);
+  renderConvoList();
 }
-
-function showConfirm(ev) {
-  const d = document.createElement('div');
-  d.className = 'confirm-box';
-  let detail = ev.tool === 'run_bash' ? ev.args.command
-    : ev.tool === 'write_file' ? ev.args.path + '\n\n' + (ev.args.content || '').slice(0, 400)
-    : JSON.stringify(ev.args, null, 2).slice(0, 500);
-  d.innerHTML = '<div class="chead">🛡️ Agen meminta izin menjalankan aksi:</div><pre></pre><div class="cbtns"></div>';
-  d.querySelector('pre').textContent = ev.tool + '\n' + detail;
-  const btns = d.querySelector('.cbtns');
-  const yes = document.createElement('button');
-  yes.className = 'btn primary'; yes.textContent = '✅ Setujui';
-  const no = document.createElement('button');
-  no.className = 'btn danger'; no.textContent = '❌ Tolak';
-  const answer = (ok) => {
-    ws.send(JSON.stringify({ type: 'confirm', approved: ok }));
-    d.querySelector('.cbtns').innerHTML = ok ? '<span style="color:#3fb950">✅ Disetujui</span>' : '<span style="color:var(--err-border)">❌ Ditolak</span>';
-  };
-  yes.onclick = () => answer(true);
-  no.onclick = () => answer(false);
-  btns.appendChild(yes); btns.appendChild(no);
-  chat.appendChild(d); scrollChat();
-}
-
-function scrollChat() { chat.scrollTop = chat.scrollHeight; }
-
-function setRunning(v) {
-  running = v;
-  sendBtn.style.display = v ? 'none' : '';
-  stopBtn.style.display = v ? '' : 'none';
-  typing.style.display = v ? 'block' : (typing.textContent.startsWith('✅') ? 'block' : 'none');
-  if (v) typing.textContent = '🤖 MiniDevin sedang bekerja…';
-}
-
-function send() {
-  const text = input.value.trim();
-  if (!text || !ws || ws.readyState !== 1 || running) return;
-  addMsg('user', text);
-  input.value = '';
-  setRunning(true);
-  ws.send(JSON.stringify({ type: 'chat', message: text, plan: document.getElementById('plan-mode').checked }));
-}
-
-function stop() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'stop' })); }
-function newSession() { if (ws && ws.readyState === 1 && !running) ws.send(JSON.stringify({ type: 'new_session', workspace: currentWs })); }
-
-function useTemplate(el) {
+function useSugg(el) {
   input.value = el.textContent.trim();
   input.focus();
 }
 
-function exportSession() {
-  if (sessionId) location.href = apiUrl('/api/export?id=' + encodeURIComponent(sessionId));
+// ---------- image generation ----------
+async function generateImage(prompt) {
+  setBusy(true);
+  typing.textContent = '🎨 Membuat gambar…';
+  try {
+    const img = await puter.ai.txt2img(prompt);
+    const body = addMsg('ai', '');
+    body.innerHTML = '<div>🎨 <b></b></div>';
+    body.querySelector('b').textContent = prompt;
+    img.style.maxWidth = '100%'; img.style.borderRadius = '10px'; img.style.marginTop = '10px';
+    body.appendChild(img);
+    scrollChat();
+    conversations[currentId].messages.push({ role: 'assistant', content: `🎨 Gambar dibuat: ${prompt}` });
+  } catch (e) {
+    addMsg('error', '⚠️ Gagal membuat gambar: ' + (e.message || e));
+  }
+  setBusy(false);
+  typing.textContent = '🤖 AI sedang mengetik…';
 }
 
-async function loadWorkspaces() {
-  const sel = document.getElementById('ws-select');
-  const list = await (await fetch(apiUrl('/api/workspaces'))).json();
-  sel.innerHTML = '';
-  list.forEach(w => {
-    const o = document.createElement('option');
-    o.value = w; o.textContent = '📂 ' + w;
-    sel.appendChild(o);
-  });
-  const add = document.createElement('option');
-  add.value = '__new__'; add.textContent = '➕ Workspace baru…';
-  sel.appendChild(add);
-  sel.value = currentWs;
-}
+// ---------- chat ----------
+async function send() {
+  const text = input.value.trim();
+  if (!text || busy) return;
+  input.value = '';
+  input.style.height = 'auto';
 
-function syncWsSelect() {
-  const sel = document.getElementById('ws-select');
-  if (![...sel.options].some(o => o.value === currentWs)) loadWorkspaces();
-  else sel.value = currentWs;
-}
+  if (!currentId) {
+    currentId = uid();
+    conversations[currentId] = { title: text.slice(0, 50), messages: [] };
+  }
+  showHome(false);
+  addMsg('user', text);
+  conversations[currentId].messages.push({ role: 'user', content: text });
+  renderConvoList();
 
-function switchWorkspace(val) {
-  if (val === '__new__') {
-    const name = prompt('Nama workspace baru (huruf/angka/-/_):', '');
-    if (!name) { syncWsSelect(); return; }
-    currentWs = name.replace(/[^A-Za-z0-9._-]/g, '_') || 'default';
-  } else currentWs = val;
-  localStorage.setItem('minidevin_ws', currentWs);
-  if (ws && ws.readyState === 1 && !running) ws.send(JSON.stringify({ type: 'new_session', workspace: currentWs }));
-  loadWorkspaces();
+  if (text.startsWith('/gambar ')) {
+    await generateImage(text.slice(8));
+    await saveConversations();
+    return;
+  }
+
+  setBusy(true);
+  const model = modelSelect.value;
+  const messages = conversations[currentId].messages.slice(-20).map(m => ({ role: m.role, content: m.content }));
+
+  try {
+    if (streamMode.checked) {
+      const body = addMsg('ai', '');
+      let full = '';
+      const resp = await puter.ai.chat(messages, { model, stream: true });
+      for await (const part of resp) {
+        if (part?.text) {
+          full += part.text;
+          body.innerHTML = md(full) + '<span class="cursor"></span>';
+          scrollChat();
+        }
+      }
+      body.innerHTML = md(full);
+      addCopyButtons(body);
+      conversations[currentId].messages.push({ role: 'assistant', content: full });
+    } else {
+      const resp = await puter.ai.chat(messages, { model });
+      const content = resp?.message?.content ?? resp?.text ?? String(resp);
+      const textOut = Array.isArray(content) ? content.map(c => c.text || '').join('') : content;
+      addMsg('ai', textOut, true);
+      conversations[currentId].messages.push({ role: 'assistant', content: textOut });
+    }
+  } catch (e) {
+    addMsg('error', '⚠️ ' + (e.message || JSON.stringify(e)));
+  }
+  setBusy(false);
+  await saveConversations();
 }
 
 input.addEventListener('keydown', (e) => {
-  if (slashMenu.style.display === 'block') {
-    const items = slashMenu.querySelectorAll('.sitem2');
-    if (e.key === 'ArrowDown') { e.preventDefault(); slashIdx = (slashIdx + 1) % items.length; renderSlashMenu(input.value); return; }
-    if (e.key === 'ArrowUp') { e.preventDefault(); slashIdx = (slashIdx - 1 + items.length) % items.length; renderSlashMenu(input.value); return; }
-    if (e.key === 'Tab' || (e.key === 'Enter' && items.length)) {
-      e.preventDefault();
-      const sel = slashMenu.querySelector('.sitem2.sel .scmd');
-      if (sel) { input.value = sel.textContent + ' '; slashMenu.style.display = 'none'; }
-      if (e.key === 'Tab') return;
-      if (e.key === 'Enter' && input.value.trim() === sel.textContent) return;
-    }
-    if (e.key === 'Escape') { slashMenu.style.display = 'none'; return; }
-  }
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
 });
 input.addEventListener('input', () => {
-  slashIdx = 0;
-  renderSlashMenu(input.value);
-});
-document.addEventListener('click', (e) => {
-  if (!slashMenu.contains(e.target) && e.target !== input) slashMenu.style.display = 'none';
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 160) + 'px';
 });
 
-function switchTab(name) {
-  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
-  if (name === 'git') refreshGit();
-}
-
-async function refreshFiles() {
-  try {
-    const tree = await (await fetch(apiUrl('/api/files?ws=' + encodeURIComponent(currentWs)))).json();
-    const el = document.getElementById('file-tree');
-    el.innerHTML = '';
-    const ul = document.createElement('ul');
-    (tree.children || []).forEach(n => ul.appendChild(renderNode(n, '')));
-    el.appendChild(ul);
-  } catch (e) {}
-}
-
-function renderNode(node, prefix) {
-  const li = document.createElement('li');
-  li.className = node.type;
-  const path = prefix ? prefix + '/' + node.name : node.name;
-  const span = document.createElement('span');
-  span.className = 'node';
-  span.textContent = (node.type === 'dir' ? '📁 ' : '📄 ') + node.name;
-  if (node.type === 'file') span.onclick = () => viewFile(path);
-  li.appendChild(span);
-  if (node.children && node.children.length) {
-    const ul = document.createElement('ul');
-    node.children.forEach(c => ul.appendChild(renderNode(c, path)));
-    li.appendChild(ul);
-  }
-  return li;
-}
-
-async function viewFile(path) {
-  const r = await (await fetch(apiUrl('/api/file?ws=' + encodeURIComponent(currentWs) + '&path=' + encodeURIComponent(path)))).json();
-  viewedPath = r.error ? null : r.path;
-  document.getElementById('viewer-path').textContent = r.error ? '⚠️ ' + r.error : 'sandbox/' + r.path;
-  document.getElementById('viewer-actions').style.display = r.error ? 'none' : '';
-  document.getElementById('viewer-content').value = r.content || '';
-  switchTab('viewer');
-}
-
-async function saveViewedFile() {
-  if (!viewedPath) return;
-  const r = await (await fetch(apiUrl('/api/file'), {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: viewedPath, content: document.getElementById('viewer-content').value, ws: currentWs })
-  })).json();
-  document.getElementById('viewer-path').textContent = r.ok ? `sandbox/${r.path} — ✅ tersimpan (${r.size} bytes)` : '⚠️ ' + r.error;
-}
-
-function downloadViewedFile() {
-  if (viewedPath) location.href = apiUrl('/api/download?ws=' + encodeURIComponent(currentWs) + '&path=' + encodeURIComponent(viewedPath));
-}
-
-async function uploadFile(inputEl) {
-  const f = inputEl.files[0];
-  if (!f) return;
-  const fd = new FormData();
-  fd.append('file', f);
-  const r = await (await fetch(apiUrl('/api/upload?ws=' + encodeURIComponent(currentWs)), { method: 'POST', body: fd })).json();
-  inputEl.value = '';
-  if (r.error) alert('Upload gagal: ' + r.error);
-  refreshFiles();
-}
-
-async function refreshGit() {
-  try {
-    const r = await (await fetch(apiUrl('/api/git/log?ws=' + encodeURIComponent(currentWs)))).json();
-    const el = document.getElementById('git-log');
-    el.innerHTML = '';
-    if (!r.commits || !r.commits.length) {
-      el.textContent = 'Belum ada snapshot. MiniDevin melakukan commit otomatis setelah setiap tugas selesai.';
-      return;
-    }
-    r.commits.forEach(c => {
-      const d = document.createElement('div');
-      d.className = 'commit';
-      d.innerHTML = '<span class="sha"></span> <span class="cmsg"></span>';
-      d.querySelector('.sha').textContent = c.sha;
-      d.querySelector('.cmsg').textContent = c.msg;
-      d.title = 'Klik untuk melihat diff';
-      d.onclick = () => showDiff(c.sha);
-      el.appendChild(d);
-    });
-  } catch (e) {}
-}
-
-async function showDiff(sha) {
-  const el = document.getElementById('git-diff');
-  el.textContent = 'Memuat diff…';
-  const r = await (await fetch(apiUrl('/api/git/diff?ws=' + encodeURIComponent(currentWs) + '&sha=' + encodeURIComponent(sha)))).json();
-  el.textContent = r.diff || r.error || '(kosong)';
-}
-
-async function refreshStatus() {
-  const s = await (await fetch(apiUrl('/api/status'))).json();
-  document.getElementById('status-dot').classList.toggle('ok', s.configured);
-  document.getElementById('model-badge').textContent = s.configured ? s.model : 'belum dikonfigurasi';
-  if (s.configured) {
-    document.getElementById('m-model').value = s.model;
-    document.getElementById('m-base').value = s.base_url;
-  }
-}
-refreshStatus();
-loadWorkspaces();
-refreshFiles();
-
-function openSettings() {
-  document.getElementById('m-backend').value = BACKEND;
-  document.getElementById('modal-title').textContent = '⚙️ Pengaturan LLM';
-  document.getElementById('settings-body').style.display = '';
-  document.getElementById('sessions-body').style.display = 'none';
-  document.getElementById('modal-save').style.display = '';
-  document.getElementById('modal').classList.add('open');
-}
-
-let cachedSessions = [];
-async function openSessions() {
-  document.getElementById('modal-title').textContent = '🕘 Riwayat Percakapan';
-  document.getElementById('settings-body').style.display = 'none';
-  document.getElementById('sessions-body').style.display = '';
-  document.getElementById('modal-save').style.display = 'none';
-  document.getElementById('session-search').value = '';
-  cachedSessions = await (await fetch(apiUrl('/api/sessions'))).json();
-  renderSessionList();
-  document.getElementById('modal').classList.add('open');
-}
-
-function renderSessionList() {
-  const q = (document.getElementById('session-search').value || '').toLowerCase();
-  const list = document.getElementById('session-list');
-  list.innerHTML = '';
-  const filtered = cachedSessions.filter(s => s.title.toLowerCase().includes(q));
-  if (!filtered.length) { list.innerHTML = '<div class="hint">Tidak ada hasil.</div>'; return; }
-  filtered.forEach(s => {
-    const d = document.createElement('div');
-    d.className = 'sitem';
-    const title = document.createElement('span');
-    title.className = 'stitle';
-    title.textContent = s.title + ' — ' + new Date(s.updated * 1000).toLocaleString('id-ID');
-    title.onclick = () => {
-      closeModal();
-      if (ws && ws.readyState === 1 && !running) ws.send(JSON.stringify({ type: 'init', session_id: s.id }));
-    };
-    const del = document.createElement('button');
-    del.className = 'sdel';
-    del.textContent = '🗑';
-    del.title = 'Hapus sesi';
-    del.onclick = async (e) => {
-      e.stopPropagation();
-      if (!confirm('Hapus percakapan "' + s.title + '"?')) return;
-      await fetch(apiUrl('/api/sessions/' + s.id), { method: 'DELETE' });
-      cachedSessions = cachedSessions.filter(x => x.id !== s.id);
-      if (s.id === sessionId) newSession();
-      renderSessionList();
-    };
-    d.appendChild(title);
-    d.appendChild(del);
-    list.appendChild(d);
-  });
-}
-
-function closeModal() { document.getElementById('modal').classList.remove('open'); }
-async function saveSettings() {
-  const newBackend = document.getElementById('m-backend').value.trim().replace(/\/+$/, '');
-  if (newBackend !== BACKEND) {
-    localStorage.setItem('minidevin_backend', newBackend);
-    BACKEND = newBackend;
-  }
-  // Hanya kirim konfigurasi LLM jika API key diisi — agar tidak menimpa konfigurasi server dari Pages
-  const key = document.getElementById('m-key').value.trim();
-  if (key) {
-    await fetch(apiUrl('/api/settings'), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: document.getElementById('m-model').value || 'gpt-4o-mini',
-        api_key: key,
-        base_url: document.getElementById('m-base').value,
-      })
-    });
-  }
-  closeModal();
-  location.reload();
-}
-
-// GitHub Pages: minta Backend URL saat pertama kali dibuka
-if (location.hostname.endsWith('github.io') && !BACKEND) {
-  addMsg('agent', '👋 Ini adalah frontend statis. Masukkan alamat **Backend URL** server MiniDevin Anda di ⚙️ Settings (server tempat `uvicorn minidevin.server:app` berjalan), lalu simpan.', true);
-  setTimeout(openSettings, 400);
-}
+// ---------- init ----------
+(async () => {
+  await loadModels();
+  await refreshAuth();
+  await loadConversations();
+  showHome(true);
+})();
 </script>
 </body>
 </html>
