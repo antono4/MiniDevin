@@ -91,15 +91,45 @@ async def list_files():
     return _tree(WORKSPACE, 4, [0])
 
 
-@app.get("/api/file")
-async def read_file(path: str = Query(...)):
+def _resolve_file(path: str) -> Path | None:
     p = (WORKSPACE / path).resolve()
     if not str(p).startswith(str(WORKSPACE) + os.sep) or not p.is_file():
+        return None
+    return p
+
+
+@app.get("/api/file")
+async def read_file(path: str = Query(...)):
+    p = _resolve_file(path)
+    if not p:
         return JSONResponse({"error": "invalid path"}, status_code=400)
     try:
         return {"path": str(p.relative_to(WORKSPACE)), "content": p.read_text()[:100_000]}
     except UnicodeDecodeError:
         return JSONResponse({"error": "binary file"}, status_code=400)
+
+
+class FileSave(BaseModel):
+    path: str
+    content: str
+
+
+@app.post("/api/file")
+async def save_file(f: FileSave):
+    p = (WORKSPACE / f.path).resolve()
+    if not str(p).startswith(str(WORKSPACE) + os.sep):
+        return JSONResponse({"error": "invalid path"}, status_code=400)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(f.content)
+    return {"ok": True, "path": str(p.relative_to(WORKSPACE)), "size": len(f.content)}
+
+
+@app.get("/api/download")
+async def download_file(path: str = Query(...)):
+    p = _resolve_file(path)
+    if not p:
+        return JSONResponse({"error": "invalid path"}, status_code=400)
+    return FileResponse(p, filename=p.name)
 
 
 @app.post("/api/upload")
@@ -117,12 +147,28 @@ async def upload(file: UploadFile):
 @app.get("/api/git/log")
 async def git_log():
     if not (WORKSPACE / ".git").exists():
-        return {"log": ""}
+        return {"commits": []}
     r = subprocess.run(
-        ["git", "log", "--oneline", "--decorate", "-20"],
+        ["git", "log", "--format=%h%x1f%s", "-20"],
         cwd=WORKSPACE, capture_output=True, text=True,
     )
-    return {"log": r.stdout.strip()}
+    commits = [
+        {"sha": sha, "msg": msg}
+        for line in r.stdout.strip().splitlines() if line
+        for sha, msg in [line.split("\x1f", 1)]
+    ]
+    return {"commits": commits}
+
+
+@app.get("/api/git/diff")
+async def git_diff(sha: str = Query(...)):
+    if not (WORKSPACE / ".git").exists() or not sha.replace("~", "").replace("^", "").isalnum():
+        return JSONResponse({"error": "invalid"}, status_code=400)
+    r = subprocess.run(
+        ["git", "show", "--stat", "--patch", "--format=commit %h%n%s%n", sha],
+        cwd=WORKSPACE, capture_output=True, text=True,
+    )
+    return {"diff": r.stdout[:12000]}
 
 
 @app.get("/api/sessions")

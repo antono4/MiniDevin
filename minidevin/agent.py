@@ -10,6 +10,7 @@ import subprocess
 import urllib.request
 from pathlib import Path
 
+import openai
 from openai import AsyncOpenAI
 
 WORKSPACE = Path(os.environ.get("MINIDEVIN_WORKSPACE", "/workspace/project/sandbox")).resolve()
@@ -270,6 +271,53 @@ def execute_tool(name: str, args: dict) -> str:
     return f"Error: unknown tool {name}"
 
 
+async def _create_completion(client, model: str, messages: list, emit):
+    """Stream a chat completion. Returns (message_dict, usage_dict, full_content).
+    Falls back to non-streaming if the provider rejects streaming options."""
+    kwargs = dict(messages=messages, tools=TOOLS, tool_choice="auto")
+
+    async def _stream(**extra):
+        stream = await client.chat.completions.create(model=model, stream=True, **kwargs, **extra)
+        content_parts: list[str] = []
+        tool_calls: dict[int, dict] = {}
+        usage = {"prompt_tokens": 0, "completion_tokens": 0}
+        async for chunk in stream:
+            if chunk.usage:
+                usage["prompt_tokens"] += chunk.usage.prompt_tokens or 0
+                usage["completion_tokens"] += chunk.usage.completion_tokens or 0
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta
+            if delta.content:
+                content_parts.append(delta.content)
+                await emit({"type": "thought_delta", "content": delta.content})
+            for tc in delta.tool_calls or []:
+                slot = tool_calls.setdefault(tc.index, {"id": "", "name": "", "arguments": ""})
+                if tc.id:
+                    slot["id"] += tc.id
+                if tc.function and tc.function.name:
+                    slot["name"] += tc.function.name
+                if tc.function and tc.function.arguments:
+                    slot["arguments"] += tc.function.arguments
+        message = {
+            "role": "assistant",
+            "content": "".join(content_parts) or None,
+            "tool_calls": [
+                {"id": t["id"] or f"call_{i}", "type": "function",
+                 "function": {"name": t["name"], "arguments": t["arguments"]}}
+                for i, t in sorted(tool_calls.items())
+            ] or None,
+        }
+        return message, usage, message["content"]
+
+    try:
+        return await _stream(stream_options={"include_usage": True})
+    except openai.BadRequestError as e:
+        if "include_usage" in str(e) or "stream_options" in str(e):
+            return await _stream()
+        raise
+
+
 async def make_plan(task: str, config: dict) -> str:
     client = AsyncOpenAI(api_key=config["api_key"], base_url=config.get("base_url") or None)
     resp = await client.chat.completions.create(
@@ -321,38 +369,34 @@ async def run_agent(user_message: str, history: list, config: dict, emit, cancel
 
         await emit({"type": "step", "step": step})
         try:
-            resp = await client.chat.completions.create(
-                model=config["model"], messages=messages, tools=TOOLS, tool_choice="auto",
-            )
+            msg, step_usage, content = await _create_completion(client, config["model"], messages, emit)
         except asyncio.CancelledError:
             raise
         except Exception as e:
             await emit({"type": "error", "content": f"LLM error: {e}"})
             return {"steps": step, **usage}
 
-        if resp.usage:
-            usage["prompt_tokens"] += resp.usage.prompt_tokens or 0
-            usage["completion_tokens"] += resp.usage.completion_tokens or 0
+        usage["prompt_tokens"] += step_usage["prompt_tokens"]
+        usage["completion_tokens"] += step_usage["completion_tokens"]
+        messages.append({k: v for k, v in msg.items() if v is not None})
 
-        msg = resp.choices[0].message
-        messages.append(msg.model_dump(exclude_none=True))
+        if content:
+            await emit({"type": "thought", "content": content})
 
-        if msg.content:
-            await emit({"type": "thought", "content": msg.content})
-
-        if not msg.tool_calls:
-            await emit({"type": "message", "content": msg.content or "(no response)"})
+        tool_calls = msg.get("tool_calls") or []
+        if not tool_calls:
+            await emit({"type": "message", "content": content or "(no response)"})
             await emit({"type": "done", **usage})
             return {"steps": step, **usage}
 
-        for call in msg.tool_calls:
+        for call in tool_calls:
             if cancel.is_set():
                 await emit({"type": "error", "content": "⏹️ Dihentikan oleh pengguna."})
                 return {"steps": step, **usage}
 
-            name = call.function.name
+            name = call["function"]["name"]
             try:
-                args = json.loads(call.function.arguments or "{}")
+                args = json.loads(call["function"]["arguments"] or "{}")
             except json.JSONDecodeError:
                 args = {}
             await emit({"type": "action", "tool": name, "args": args})
@@ -364,7 +408,7 @@ async def run_agent(user_message: str, history: list, config: dict, emit, cancel
                 return {"steps": step, **usage}
 
             await emit({"type": "observation", "tool": name, "content": result})
-            messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
+            messages.append({"role": "tool", "tool_call_id": call["id"], "content": result})
 
     await emit({"type": "error", "content": f"Stopped after {MAX_STEPS} steps (limit reached)."})
     return {"steps": MAX_STEPS, **usage}

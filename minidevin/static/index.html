@@ -73,8 +73,15 @@
   #terminal-log .out { color: #7ee787; }
   #git-log { color: #d2a8ff; }
 
-  #viewer-head { color: #8b949e; font-size: 12px; padding: 2px 6px 8px; font-family: monospace; }
-  #viewer-content { font-family: 'Cascadia Code', monospace; font-size: 12.5px; background: #010409; border-radius: 8px; padding: 12px; white-space: pre-wrap; word-break: break-word; color: #c9d1d9; }
+  #viewer-head { color: #8b949e; font-size: 12px; padding: 2px 6px 8px; font-family: monospace; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  #viewer-content { width: 100%; min-height: 70vh; font-family: 'Cascadia Code', monospace; font-size: 12.5px; background: #010409; border: 1px solid #30363d; border-radius: 8px; padding: 12px; white-space: pre; color: #c9d1d9; resize: vertical; }
+  #viewer-content:focus { outline: none; border-color: #58a6ff; }
+  #git-log { min-height: auto; max-height: 40%; overflow-y: auto; }
+  .commit { padding: 4px 6px; border-radius: 4px; cursor: pointer; color: #d2a8ff; font-family: 'Cascadia Code', monospace; font-size: 12.5px; }
+  .commit:hover { background: #21262d; }
+  .commit .sha { color: #58a6ff; }
+  #git-diff { font-family: 'Cascadia Code', monospace; font-size: 12px; background: #010409; border-radius: 8px; padding: 12px; margin-top: 10px; white-space: pre-wrap; word-break: break-word; color: #c9d1d9; max-height: 55vh; overflow-y: auto; }
+  .msg.thought.streaming { border-color: #8957e5; }
 
   #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); align-items: center; justify-content: center; z-index: 10; }
   #modal.open { display: flex; }
@@ -103,7 +110,7 @@
 <main>
   <section id="chat-panel">
     <div id="chat">
-      <div class="msg agent"><p>Halo! Saya <strong>MiniDevin v3</strong> — agen AI yang menulis &amp; menjalankan kode di sandbox, bisa <strong>riset web</strong> (web_fetch), <strong>mode rencana</strong> (planner → coder), dan <strong>snapshot git</strong> otomatis. Panel kanan: <strong>Files</strong>, <strong>Terminal</strong>, <strong>Viewer</strong>, <strong>Git</strong>.</p></div>
+      <div class="msg agent"><p>Halo! Saya <strong>MiniDevin v4</strong> — kini dengan <strong>streaming real-time</strong>, <strong>voice input</strong> 🎤, <strong>editor mini</strong> di tab Viewer (edit + simpan + download), dan <strong>git diff viewer</strong>. Aktifkan 🧠 Rencana untuk mode planner → coder.</p></div>
     </div>
     <div id="typing">🤖 MiniDevin sedang bekerja…</div>
     <div id="inputbar">
@@ -111,6 +118,7 @@
         <input type="checkbox" id="plan-mode"> 🧠 Rencana
       </label>
       <textarea id="input" rows="1" placeholder="Ketik tugas untuk MiniDevin… (Enter = kirim)"></textarea>
+      <button class="btn" id="mic-btn" style="display:none" onclick="toggleMic()" title="Voice input">🎤</button>
       <button class="btn primary" id="send-btn" onclick="send()">Kirim</button>
       <button class="btn danger" id="stop-btn" style="display:none" onclick="stop()">⏹ Stop</button>
     </div>
@@ -136,10 +144,19 @@
     </div>
     <div class="tab-content" id="tab-terminal"><div id="terminal-log"><span style="color:#8b949e"># Log perintah bash agen akan muncul di sini</span></div></div>
     <div class="tab-content" id="tab-viewer">
-      <div id="viewer-head">Pilih file di tab Files untuk melihat isinya</div>
-      <div id="viewer-content"></div>
+      <div id="viewer-head">
+        <span id="viewer-path">Pilih file di tab Files untuk melihat isinya</span>
+        <span id="viewer-actions" style="display:none">
+          <button class="btn" onclick="saveViewedFile()">💾 Simpan</button>
+          <button class="btn" onclick="downloadViewedFile()">⬇ Unduh</button>
+        </span>
+      </div>
+      <textarea id="viewer-content" spellcheck="false" placeholder=""></textarea>
     </div>
-    <div class="tab-content" id="tab-git"><div id="git-log">Belum ada snapshot. MiniDevin melakukan commit otomatis setelah setiap tugas selesai.</div></div>
+    <div class="tab-content" id="tab-git">
+      <div id="git-log">Belum ada snapshot. MiniDevin melakukan commit otomatis setelah setiap tugas selesai.</div>
+      <div id="git-diff"></div>
+    </div>
   </section>
 </main>
 
@@ -173,6 +190,26 @@ const sendBtn = document.getElementById('send-btn');
 const stopBtn = document.getElementById('stop-btn');
 const termLog = document.getElementById('terminal-log');
 let ws, running = false, sessionId = localStorage.getItem('minidevin_session');
+let streamEl = null, streamText = '', viewedPath = null;
+
+// Voice input (Web Speech API)
+let recog = null, micOn = false;
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SR) {
+  document.getElementById('mic-btn').style.display = '';
+  recog = new SR();
+  recog.lang = 'id-ID';
+  recog.interimResults = true;
+  recog.onresult = (e) => {
+    input.value = Array.from(e.results).map(r => r[0].transcript).join('');
+  };
+  recog.onend = () => { micOn = false; document.getElementById('mic-btn').textContent = '🎤'; };
+}
+function toggleMic() {
+  if (!recog) return;
+  if (micOn) { recog.stop(); micOn = false; document.getElementById('mic-btn').textContent = '🎤'; }
+  else { recog.start(); micOn = true; document.getElementById('mic-btn').textContent = '🔴'; input.focus(); }
+}
 
 function connect() {
   ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
@@ -229,12 +266,30 @@ function handleEvent(ev) {
       sessionId = ev.session_id;
       localStorage.setItem('minidevin_session', sessionId);
       chat.querySelectorAll('.msg, details').forEach((n, i) => { if (i > 0) n.remove(); });
+      streamEl = null; streamText = '';
       termLog.innerHTML = '<span style="color:#8b949e"># Log perintah bash agen akan muncul di sini</span>';
       (ev.events || []).forEach(renderEvent);
       refreshFiles(); refreshGit();
       break;
     case 'user': addMsg('user', ev.content); break;
-    case 'thought': addMsg('thought', '💭 ' + ev.content); break;
+    case 'thought_delta':
+      if (!streamEl) {
+        streamEl = document.createElement('div');
+        streamEl.className = 'msg thought streaming';
+        streamText = '';
+        chat.appendChild(streamEl);
+      }
+      streamText += ev.content;
+      streamEl.textContent = '💭 ' + streamText;
+      scrollChat();
+      break;
+    case 'thought':
+      if (streamEl) {
+        streamEl.classList.remove('streaming');
+        streamEl.textContent = '💭 ' + ev.content;
+        streamEl = null; streamText = '';
+      } else addMsg('thought', '💭 ' + ev.content);
+      break;
     case 'plan': addMsg('plan', '🧠 **Rencana:**\n\n' + ev.content, true); break;
     case 'message': addMsg('agent', ev.content, true); setRunning(false); break;
     case 'action': addBlock(ev.tool, ev.args); if (ev.tool === 'run_bash') termAppend(ev.args.command, '…'); break;
@@ -322,9 +377,24 @@ function renderNode(node, prefix) {
 
 async function viewFile(path) {
   const r = await (await fetch('/api/file?path=' + encodeURIComponent(path))).json();
-  document.getElementById('viewer-head').textContent = r.error ? '⚠️ ' + r.error : 'sandbox/' + r.path;
-  document.getElementById('viewer-content').textContent = r.content || '';
+  viewedPath = r.error ? null : r.path;
+  document.getElementById('viewer-path').textContent = r.error ? '⚠️ ' + r.error : 'sandbox/' + r.path;
+  document.getElementById('viewer-actions').style.display = r.error ? 'none' : '';
+  document.getElementById('viewer-content').value = r.content || '';
   switchTab('viewer');
+}
+
+async function saveViewedFile() {
+  if (!viewedPath) return;
+  const r = await (await fetch('/api/file', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: viewedPath, content: document.getElementById('viewer-content').value })
+  })).json();
+  document.getElementById('viewer-path').textContent = r.ok ? `sandbox/${r.path} — ✅ tersimpan (${r.size} bytes)` : '⚠️ ' + r.error;
+}
+
+function downloadViewedFile() {
+  if (viewedPath) location.href = '/api/download?path=' + encodeURIComponent(viewedPath);
 }
 
 async function uploadFile(inputEl) {
@@ -341,8 +411,30 @@ async function uploadFile(inputEl) {
 async function refreshGit() {
   try {
     const r = await (await fetch('/api/git/log')).json();
-    document.getElementById('git-log').textContent = r.log || 'Belum ada snapshot. MiniDevin melakukan commit otomatis setelah setiap tugas selesai.';
+    const el = document.getElementById('git-log');
+    el.innerHTML = '';
+    if (!r.commits || !r.commits.length) {
+      el.textContent = 'Belum ada snapshot. MiniDevin melakukan commit otomatis setelah setiap tugas selesai.';
+      return;
+    }
+    r.commits.forEach(c => {
+      const d = document.createElement('div');
+      d.className = 'commit';
+      d.innerHTML = '<span class="sha"></span> <span class="cmsg"></span>';
+      d.querySelector('.sha').textContent = c.sha;
+      d.querySelector('.cmsg').textContent = c.msg;
+      d.title = 'Klik untuk melihat diff';
+      d.onclick = () => showDiff(c.sha);
+      el.appendChild(d);
+    });
   } catch (e) {}
+}
+
+async function showDiff(sha) {
+  const el = document.getElementById('git-diff');
+  el.textContent = 'Memuat diff…';
+  const r = await (await fetch('/api/git/diff?sha=' + encodeURIComponent(sha))).json();
+  el.textContent = r.diff || r.error || '(kosong)';
 }
 
 async function refreshStatus() {

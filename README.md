@@ -6,30 +6,32 @@ Versi mini dari [OpenDevin/OpenHands](https://github.com/All-Hands-AI/OpenHands)
 
 **Agen & Tools**
 - 7 tools: `run_bash` · `write_file` · `edit_file` (string replace presisi) · `read_file` · `list_files` (tree) · `web_fetch` (riset internet) · `finish`
-- **Mode 🧠 Rencana** — planner menyusun rencana dulu, lalu agen coder mengeksekusinya (toggle di input bar)
-- Agent loop cancellable (tombol ⏹ Stop), batas 40 langkah, token usage ditampilkan
+- **Streaming real-time** — pemikiran LLM mengalir token-per-token ke chat (fallback otomatis untuk provider tanpa `stream_options`)
+- **Mode 🧠 Rencana** — planner menyusun rencana dulu, lalu agen coder mengeksekusinya
+- Agent loop cancellable (⏹ Stop), batas 40 langkah, token usage ditampilkan
 - Safety guard: perintah bash berbahaya diblokir, path traversal keluar sandbox ditolak
 
 **Antarmuka (split view)**
-- Chat dengan Markdown rendering (marked + DOMPurify), blok aksi/observasi collapsible
-- 📁 **Files** — file explorer sandbox + tombol ⬆ Upload (maks 20MB)
+- Chat dengan Markdown rendering, blok aksi/observasi collapsible
+- 🎤 **Voice input** (Web Speech API, Bahasa Indonesia)
+- 📁 **Files** — file explorer + ⬆ Upload (maks 20MB)
 - 💻 **Terminal** — log semua perintah bash agen
-- 📄 **Viewer** — klik file untuk melihat isi
-- 🌿 **Git** — snapshot otomatis setiap tugas selesai; log commit tampil di sini
+- 📄 **Viewer = Editor mini** — edit file langsung, 💾 Simpan (POST /api/file), ⬇ Unduh
+- 🌿 **Git** — snapshot otomatis tiap tugas selesai; klik commit untuk melihat diff
 
 **Persistensi**
-- Riwayat percakapan tersimpan di `.minidevin/sessions/` (menu 🕘 Riwayat)
-- Konfigurasi LLM tersimpan di `.minidevin/config.json`
+- Riwayat percakapan di `.minidevin/sessions/` (menu 🕘 Riwayat)
+- Konfigurasi LLM di `.minidevin/config.json`
 - Env: `LLM_MODEL`, `LLM_API_KEY`, `LLM_BASE_URL`
 
 ## Arsitektur
 
 ```
-Browser ──WebSocket──> FastAPI ──> [Planner?] ──> Agent loop ──> LLM (OpenAI-compatible)
+Browser ──WebSocket──> FastAPI ──> [Planner?] ──> Agent loop ──> LLM (OpenAI-compatible, streaming)
                           │                            │
-                          ├─ REST: /api/files          ├─ tools: bash · file · web_fetch · finish
-                          ├─ /api/file · /api/upload   └─ git snapshot tiap tugas selesai
-                          └─ /api/git/log · /api/sessions · /api/settings
+                          ├─ /api/files · /api/file    ├─ tools: bash · file · web_fetch · finish
+                          ├─ /api/upload · /api/download └─ git snapshot tiap tugas selesai
+                          └─ /api/git/log · /api/git/diff · /api/sessions · /api/settings
 ```
 
 ## Menjalankan
@@ -43,4 +45,4 @@ Buka `http://localhost:12000` → ⚙️ Settings → isi Model + API Key (+ Bas
 
 ## Roadmap
 
-Belum ada: Docker sandbox per-sesi, multi-agent penuh, browser interaktif. Untuk versi produksi, gunakan [OpenHands](https://github.com/All-Hands-AI/OpenHands).
+Belum ada: Docker sandbox per-sesi (Docker tidak tersedia di environment ini), multi-agent penuh, browser interaktif. Untuk versi produksi, gunakan [OpenHands](https://github.com/All-Hands-AI/OpenHands).
