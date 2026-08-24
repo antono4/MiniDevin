@@ -9,6 +9,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, Query, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -26,6 +27,13 @@ CONFIG_FILE = DATA_DIR / "config.json"
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="MiniDevin")
+# Izinkan frontend statis (mis. GitHub Pages) mengakses API lintas origin.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 CONFIG = {
     "model": os.environ.get("LLM_MODEL", "gpt-4o-mini"),
