@@ -120,6 +120,12 @@
   #slash-menu .sitem2 { padding: 8px 12px; cursor: pointer; font-size: 13px; color: var(--text); }
   #slash-menu .sitem2:hover, #slash-menu .sitem2.sel { background: color-mix(in srgb, var(--bg2) 50%, var(--border)); }
   #slash-menu .scmd { font-family: monospace; color: var(--accent); }
+  #agent-state { font-size: 11px; color: var(--muted); }
+  .msg.delegation { align-self: flex-start; background: var(--plan-bg); border: 1px dashed var(--plan-border); font-size: 13px; }
+  .confirm-box { align-self: flex-start; width: 88%; background: var(--bg2); border: 1px solid #e36209; border-radius: 8px; padding: 12px; font-size: 13px; }
+  .confirm-box .chead { color: #e36209; font-weight: 600; margin-bottom: 6px; }
+  .confirm-box pre { background: var(--termbg); border-radius: 6px; padding: 8px; margin: 8px 0; font-size: 12px; white-space: pre-wrap; max-height: 150px; overflow-y: auto; }
+  .confirm-box .cbtns { display: flex; gap: 8px; }
   #session-list .sitem { padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--text); }
   #session-list .sitem:hover { background: color-mix(in srgb, var(--bg2) 50%, var(--border)); }
 </style>
@@ -134,6 +140,7 @@
   <button class="btn" onclick="exportSession()" title="Ekspor percakapan ke Markdown">📤 Ekspor</button>
   <button class="btn" onclick="newSession()">＋ Baru</button>
   <button class="btn" onclick="openSessions()">🕘 Riwayat</button>
+  <span id="agent-state"></span>
   <span id="status-dot"></span>
   <button class="btn" onclick="openSettings()">⚙️ Settings</button>
 </header>
@@ -141,7 +148,7 @@
 <main>
   <section id="chat-panel">
     <div id="chat">
-      <div class="msg agent"><p>Halo! Saya <strong>MiniDevin v6</strong> — dengan <strong>streaming</strong>, <strong>voice input</strong> 🎤, <strong>multi-workspace</strong>, <strong>tema 🌓</strong>, <strong>slash commands</strong> (ketik <code>/</code>), <strong>search riwayat</strong>, dan <strong>TTS</strong>. Klik template di bawah untuk mulai cepat!</p></div>
+      <div class="msg agent"><p>Halo! Saya <strong>MiniDevin v7</strong> — kini dengan arsitektur ala OpenHands: <strong>event stream</strong> append-only, <strong>runtime</strong> eksekusi, <strong>multi-agent</strong> (💻 Coder · 🔍 Researcher · 🧠 Planner dengan delegasi), dan <strong>mode konfirmasi</strong> 🛡️ (ketik <code>/confirm</code>).</p></div>
     </div>
     <div id="typing">🤖 MiniDevin sedang bekerja…</div>
     <div id="chips">
@@ -149,6 +156,7 @@
       <button class="chip" onclick="useTemplate(this)">📊 Analisis data CSV yang saya upload dan buatkan grafik matplotlib</button>
       <button class="chip" onclick="useTemplate(this)">🕸️ Riset topik ini lewat web lalu buatkan ringkasan: [topik]</button>
       <button class="chip" onclick="useTemplate(this)">🐛 Debug kode di workspace ini dan perbaiki errornya</button>
+      <button class="chip" onclick="useTemplate(this)">/confirm</button>
     </div>
     <div id="inputbar">
       <label class="toggle" title="Planner menyusun rencana dulu, lalu coder mengeksekusinya">
@@ -294,6 +302,7 @@ const SLASH_CMDS = [
   { cmd: '/web', desc: 'Riset web: agen mengambil halaman/meneliti topik lalu menjawab' },
   { cmd: '/run', desc: 'Jalankan perintah bash langsung di workspace' },
   { cmd: '/reset', desc: 'Hapus konteks percakapan dan mulai bersih' },
+  { cmd: '/confirm', desc: 'Aktif/matikan mode konfirmasi (setujui tiap aksi agen)' },
 ];
 let slashIdx = 0;
 const slashMenu = document.getElementById('slash-menu');
@@ -398,6 +407,15 @@ function handleEvent(ev) {
       } else addMsg('thought', '💭 ' + ev.content);
       break;
     case 'plan': addMsg('plan', '🧠 **Rencana:**\n\n' + ev.content, true); break;
+    case 'delegation': addMsg('delegation', `🔀 Mendelegasikan ke ${ev.agent}: ${ev.content}`); break;
+    case 'state':
+      document.getElementById('agent-state').textContent =
+        { running: '▶ berjalan', awaiting_confirmation: '⏳ menunggu konfirmasi', finished: '✅ selesai', stopped: '⏹ berhenti', error: '⚠️ error' }[ev.state] || ev.state;
+      break;
+    case 'confirm': showConfirm(ev); break;
+    case 'confirmation_mode':
+      addMsg('agent', ev.enabled ? '🛡️ Mode konfirmasi **AKTIF** — setiap aksi bash/tulis/edit akan meminta persetujuan Anda.' : '🛡️ Mode konfirmasi nonaktif.', true);
+      break;
     case 'message': addMsg('agent', ev.content, true); setRunning(false); if (ev.content.length < 1200) speak(ev.content); break;
     case 'action': addBlock(ev.tool, ev.args); if (ev.tool === 'run_bash') termAppend(ev.args.command, '…'); break;
     case 'observation':
@@ -419,7 +437,31 @@ function handleEvent(ev) {
 function renderEvent(ev) {
   if (ev.type === 'message') addMsg('agent', ev.content, true);
   else if (ev.type === 'error') addMsg('error', '⚠️ ' + ev.content);
+  else if (ev.type === 'delegation') addMsg('delegation', `🔀 Mendelegasikan ke ${ev.agent}: ${ev.content}`);
   else handleEvent(ev);
+}
+
+function showConfirm(ev) {
+  const d = document.createElement('div');
+  d.className = 'confirm-box';
+  let detail = ev.tool === 'run_bash' ? ev.args.command
+    : ev.tool === 'write_file' ? ev.args.path + '\n\n' + (ev.args.content || '').slice(0, 400)
+    : JSON.stringify(ev.args, null, 2).slice(0, 500);
+  d.innerHTML = '<div class="chead">🛡️ Agen meminta izin menjalankan aksi:</div><pre></pre><div class="cbtns"></div>';
+  d.querySelector('pre').textContent = ev.tool + '\n' + detail;
+  const btns = d.querySelector('.cbtns');
+  const yes = document.createElement('button');
+  yes.className = 'btn primary'; yes.textContent = '✅ Setujui';
+  const no = document.createElement('button');
+  no.className = 'btn danger'; no.textContent = '❌ Tolak';
+  const answer = (ok) => {
+    ws.send(JSON.stringify({ type: 'confirm', approved: ok }));
+    d.querySelector('.cbtns').innerHTML = ok ? '<span style="color:#3fb950">✅ Disetujui</span>' : '<span style="color:var(--err-border)">❌ Ditolak</span>';
+  };
+  yes.onclick = () => answer(true);
+  no.onclick = () => answer(false);
+  btns.appendChild(yes); btns.appendChild(no);
+  chat.appendChild(d); scrollChat();
 }
 
 function scrollChat() { chat.scrollTop = chat.scrollHeight; }

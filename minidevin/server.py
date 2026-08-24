@@ -13,7 +13,10 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .agent import WORKSPACE, WORKSPACES_ROOT, git_snapshot, make_plan, run_agent, workspace_path
+from .agent import WORKSPACES_ROOT, git_snapshot, make_plan, run_agent, workspace_path
+from .agents import AGENTS
+from .events import EventStream
+from .runtime import LocalRuntime
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -54,7 +57,24 @@ async def status():
         "configured": bool(CONFIG["api_key"]),
         "model": CONFIG["model"],
         "base_url": CONFIG["base_url"],
+        "agents": [{"key": k, "name": v["name"], "icon": v["icon"], "description": v["description"]}
+                   for k, v in AGENTS.items()],
     }
+
+
+@app.get("/api/events")
+async def get_events(id: str = Query(...)):
+    f = SESSIONS_DIR / f"{id}.jsonl"
+    if not f.exists():
+        return JSONResponse({"error": "not found"}, status_code=404)
+    out = []
+    for line in f.read_text().splitlines():
+        if line.strip():
+            try:
+                out.append(json.loads(line))
+            except Exception:
+                continue
+    return {"events": out}
 
 
 @app.post("/api/settings")
@@ -264,7 +284,13 @@ async def export_session(id: str = Query(...)):
                     headers={"Content-Disposition": f'attachment; filename="minidevin-{id}.md"'})
 
 
-SAVED_EVENTS = ("thought", "message", "action", "observation", "error", "plan")
+SAVED_EVENTS = ("thought", "message", "action", "observation", "error", "plan", "delegation")
+
+
+def _new_session(ws_name: str) -> dict:
+    return {"id": uuid.uuid4().hex[:12], "title": "Percakapan baru",
+            "updated": time.time(), "events": [], "history": [],
+            "workspace": ws_name or "default"}
 
 
 @app.websocket("/ws")
@@ -274,16 +300,35 @@ async def ws(websocket: WebSocket):
     history: list = []
     cancel = asyncio.Event()
     current_task: asyncio.Task | None = None
+    confirm_queue: asyncio.Queue = asyncio.Queue()
+    confirmation_mode = False
 
     async def emit(event: dict):
         if session is not None and event["type"] in SAVED_EVENTS:
             session["events"].append(event)
         await websocket.send_text(json.dumps(event))
 
+    async def confirm_hook(action: dict) -> bool:
+        """Ask the user to approve an action (confirmation mode)."""
+        await websocket.send_text(json.dumps({"type": "confirm", **action}))
+        try:
+            return bool(await asyncio.wait_for(confirm_queue.get(), timeout=300))
+        except asyncio.TimeoutError:
+            return False
+
     try:
         while True:
             data = json.loads(await websocket.receive_text())
             mtype = data.get("type")
+
+            if mtype == "confirm":
+                confirm_queue.put_nowait(bool(data.get("approved")))
+                continue
+
+            if mtype == "set_confirmation":
+                confirmation_mode = bool(data.get("enabled"))
+                await websocket.send_text(json.dumps({"type": "confirmation_mode", "enabled": confirmation_mode}))
+                continue
 
             if mtype == "init":
                 sid = data.get("session_id")
@@ -292,9 +337,7 @@ async def ws(websocket: WebSocket):
                     session = json.loads(f.read_text())
                     history = session.get("history", [])
                 else:
-                    session = {"id": uuid.uuid4().hex[:12], "title": "Percakapan baru",
-                               "updated": time.time(), "events": [], "history": [],
-                               "workspace": data.get("workspace") or "default"}
+                    session = _new_session(data.get("workspace"))
                 await websocket.send_text(json.dumps({
                     "type": "session", "session_id": session["id"],
                     "title": session["title"], "events": session["events"],
@@ -302,9 +345,7 @@ async def ws(websocket: WebSocket):
                 }))
 
             elif mtype == "new_session":
-                session = {"id": uuid.uuid4().hex[:12], "title": "Percakapan baru",
-                           "updated": time.time(), "events": [], "history": [],
-                           "workspace": data.get("workspace") or "default"}
+                session = _new_session(data.get("workspace"))
                 history = []
                 await websocket.send_text(json.dumps({
                     "type": "session", "session_id": session["id"],
@@ -314,6 +355,7 @@ async def ws(websocket: WebSocket):
 
             elif mtype == "stop":
                 cancel.set()
+                confirm_queue.put_nowait(False)
                 if current_task and not current_task.done():
                     current_task.cancel()
 
@@ -326,12 +368,18 @@ async def ws(websocket: WebSocket):
                     session["history"] = []
                     session["events"] = []
                     _save_session(session)
+                    (SESSIONS_DIR / f"{session['id']}.jsonl").unlink(missing_ok=True)
                     await websocket.send_text(json.dumps({
                         "type": "session", "session_id": session["id"],
                         "title": session["title"], "events": [],
                         "workspace": session.get("workspace", "default"),
                     }))
                     await emit({"type": "message", "content": "🔄 Konteks percakapan direset. Silakan mulai dari awal."})
+                    continue
+                if msg == "/confirm":
+                    confirmation_mode = not confirmation_mode
+                    await websocket.send_text(json.dumps({"type": "confirmation_mode", "enabled": confirmation_mode}))
+                    await emit({"type": "message", "content": f"🛡️ Mode konfirmasi {'AKTIF — setiap aksi bash/tulis/edit akan meminta persetujuan Anda.' if confirmation_mode else 'nonaktif.'}"})
                     continue
                 if not CONFIG["api_key"]:
                     await emit({"type": "error", "content": "LLM belum dikonfigurasi. Klik ⚙️ Settings dan masukkan API key Anda."})
@@ -350,6 +398,11 @@ async def ws(websocket: WebSocket):
                 if session["title"] == "Percakapan baru":
                     session["title"] = msg[:60]
                 session["events"].append({"type": "user", "content": data["message"]})
+
+                # OpenHands-style: append-only event stream persisted as JSONL
+                stream = EventStream(SESSIONS_DIR / f"{session['id']}.jsonl")
+                stream.add("user", content=msg)
+                runtime = LocalRuntime(workspace_path(session.get("workspace", "default")))
                 cancel = asyncio.Event()
                 try:
                     plan_text = None
@@ -357,10 +410,14 @@ async def ws(websocket: WebSocket):
                         await emit({"type": "step", "step": 0})
                         plan_text = await make_plan(msg, CONFIG)
                         await emit({"type": "plan", "content": plan_text})
+                        stream.add("plan", content=plan_text)
 
                     current_task = asyncio.create_task(
                         run_agent(msg, history, CONFIG, emit, cancel,
-                                  plan=plan_text, workspace=session.get("workspace", "default"))
+                                  plan=plan_text, workspace=session.get("workspace", "default"),
+                                  stream=stream, runtime=runtime,
+                                  confirmation_mode=confirmation_mode,
+                                  confirm_hook=confirm_hook if confirmation_mode else None)
                     )
                     await current_task
                     history.append({"role": "user", "content": msg})
@@ -369,8 +426,7 @@ async def ws(websocket: WebSocket):
                     session["history"] = history
 
                     snap = await asyncio.to_thread(
-                        git_snapshot, f"task: {session['title']}",
-                        workspace_path(session.get("workspace", "default")))
+                        git_snapshot, f"task: {session['title']}", runtime.workspace)
                     if "perubahan" not in snap and "tidak tersedia" not in snap:
                         await emit({"type": "observation", "tool": "git", "content": f"📸 Snapshot git:\n{snap}"})
                 except asyncio.CancelledError:
