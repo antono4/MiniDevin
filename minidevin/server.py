@@ -85,6 +85,12 @@ async def get_events(id: str = Query(...)):
     return {"events": out}
 
 
+@app.get("/api/settings")
+async def get_settings():
+    # Untuk penyamakan konfigurasi frontend (mis. GitHub Pages) dengan backend.
+    return {"model": CONFIG["model"], "api_key": CONFIG["api_key"], "base_url": CONFIG["base_url"]}
+
+
 @app.post("/api/settings")
 async def save_settings(s: Settings):
     CONFIG.update(s.model_dump())
