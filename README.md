@@ -5,34 +5,41 @@ Versi mini dari [OpenDevin/OpenHands](https://github.com/All-Hands-AI/OpenHands)
 ## Fitur
 
 **Agen & Tools**
-- 7 tools: `run_bash` · `write_file` · `edit_file` (string replace presisi) · `read_file` · `list_files` (tree) · `web_fetch` (riset internet) · `finish`
-- **Streaming real-time** — pemikiran LLM mengalir token-per-token ke chat (fallback otomatis untuk provider tanpa `stream_options`)
-- **Mode 🧠 Rencana** — planner menyusun rencana dulu, lalu agen coder mengeksekusinya
-- Agent loop cancellable (⏹ Stop), batas 40 langkah, token usage ditampilkan
-- Safety guard: perintah bash berbahaya diblokir, path traversal keluar sandbox ditolak
+- 7 tools: `run_bash` · `write_file` · `edit_file` · `read_file` · `list_files` · `web_fetch` · `finish`
+- **Streaming real-time** — pemikiran LLM mengalir token-per-token ke chat
+- **Mode 🧠 Rencana** — planner menyusun rencana, agen coder mengeksekusi
+- Agent loop cancellable (⏹ Stop), batas 40 langkah, token usage
+- Safety guard: perintah bash berbahaya diblokir, path traversal ditolak
+
+**Multi-workspace** *(v5)*
+- Dropdown 📂 di header: pisahkan proyek ke workspace terisolasi di `sandboxes/<nama>/`
+- Setiap workspace punya repo git, file explorer, dan riwayat sesi sendiri
+- Nama workspace disanitasi (huruf/angka/`._-`), auto-create saat dipakai
 
 **Antarmuka (split view)**
-- Chat dengan Markdown rendering, blok aksi/observasi collapsible
-- 🎤 **Voice input** (Web Speech API, Bahasa Indonesia)
-- 📁 **Files** — file explorer + ⬆ Upload (maks 20MB)
-- 💻 **Terminal** — log semua perintah bash agen
-- 📄 **Viewer = Editor mini** — edit file langsung, 💾 Simpan (POST /api/file), ⬇ Unduh
-- 🌿 **Git** — snapshot otomatis tiap tugas selesai; klik commit untuk melihat diff
+- Chat dengan Markdown + streaming, blok aksi/observasi collapsible
+- 🎤 Voice input (Web Speech API, Bahasa Indonesia)
+- ⚡ Template prompt siap pakai (REST API, analisis CSV, riset web, debug)
+- 📁 Files + ⬆ Upload · 💻 Terminal · 📄 Viewer/Editor mini (💾 Simpan, ⬇ Unduh) · 🌿 Git (klik commit = diff)
+- 📤 **Ekspor percakapan ke Markdown** (`GET /api/export?id=...`)
 
 **Persistensi**
-- Riwayat percakapan di `.minidevin/sessions/` (menu 🕘 Riwayat)
-- Konfigurasi LLM di `.minidevin/config.json`
-- Env: `LLM_MODEL`, `LLM_API_KEY`, `LLM_BASE_URL`
+- Sesi di `.minidevin/sessions/` (dengan field workspace) · konfigurasi di `.minidevin/config.json`
+- Env: `LLM_MODEL`, `LLM_API_KEY`, `LLM_BASE_URL`, `MINIDEVIN_WORKSPACES`
 
-## Arsitektur
+## API
 
-```
-Browser ──WebSocket──> FastAPI ──> [Planner?] ──> Agent loop ──> LLM (OpenAI-compatible, streaming)
-                          │                            │
-                          ├─ /api/files · /api/file    ├─ tools: bash · file · web_fetch · finish
-                          ├─ /api/upload · /api/download └─ git snapshot tiap tugas selesai
-                          └─ /api/git/log · /api/git/diff · /api/sessions · /api/settings
-```
+| Endpoint | Deskripsi |
+|---|---|
+| `GET /api/workspaces` | Daftar workspace |
+| `GET /api/files?ws=` | File tree workspace |
+| `GET/POST /api/file` | Baca / simpan file |
+| `POST /api/upload?ws=` | Upload file (maks 20MB) |
+| `GET /api/download` | Unduh file |
+| `GET /api/git/log?ws=` · `GET /api/git/diff?ws=&sha=` | Riwayat & diff git |
+| `GET /api/sessions` · `GET /api/export?id=` | Sesi & ekspor Markdown |
+| `GET/POST /api/settings` · `GET /api/status` | Konfigurasi LLM |
+| `WS /ws` | Chat agent loop (init · new_session · chat · stop) |
 
 ## Menjalankan
 
@@ -41,7 +48,7 @@ pip install -r requirements.txt
 python3 -m uvicorn minidevin.server:app --host 0.0.0.0 --port 12000
 ```
 
-Buka `http://localhost:12000` → ⚙️ Settings → isi Model + API Key (+ Base URL opsional untuk OpenRouter/Ollama/lokal).
+Buka `http://localhost:12000` → ⚙️ Settings → isi Model + API Key (+ Base URL opsional untuk OpenRouter/Ollama).
 
 ## Roadmap
 

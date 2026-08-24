@@ -67,6 +67,10 @@
   #file-tree .dir > .node { color: #58a6ff; }
   #file-tree .file > .node { color: #e6edf3; }
   #tree-head { display: flex; justify-content: space-between; align-items: center; padding: 2px 6px 8px; color: #8b949e; font-size: 12px; gap: 6px; }
+  #chips { display: flex; gap: 6px; padding: 8px 16px 0; flex-wrap: wrap; flex-shrink: 0; }
+  .chip { background: #161b22; border: 1px solid #30363d; color: #8b949e; border-radius: 20px; padding: 4px 12px; cursor: pointer; font-size: 12px; }
+  .chip:hover { color: #e6edf3; border-color: #58a6ff; }
+  select.btn { max-width: 150px; }
 
   #terminal-log, #git-log { font-family: 'Cascadia Code', monospace; font-size: 12.5px; background: #010409; border-radius: 8px; padding: 12px; min-height: 100%; white-space: pre-wrap; word-break: break-word; }
   #terminal-log .cmd { color: #58a6ff; }
@@ -99,8 +103,10 @@
 <body>
 <header>
   <h1>🐚 MiniDevin</h1>
-  <span class="badge" id="model-badge">v3</span>
+  <span class="badge" id="model-badge">v5</span>
+  <select class="btn" id="ws-select" onchange="switchWorkspace(this.value)" title="Workspace"></select>
   <span class="spacer"></span>
+  <button class="btn" onclick="exportSession()" title="Ekspor percakapan ke Markdown">📤 Ekspor</button>
   <button class="btn" onclick="newSession()">＋ Baru</button>
   <button class="btn" onclick="openSessions()">🕘 Riwayat</button>
   <span id="status-dot"></span>
@@ -110,9 +116,15 @@
 <main>
   <section id="chat-panel">
     <div id="chat">
-      <div class="msg agent"><p>Halo! Saya <strong>MiniDevin v4</strong> — kini dengan <strong>streaming real-time</strong>, <strong>voice input</strong> 🎤, <strong>editor mini</strong> di tab Viewer (edit + simpan + download), dan <strong>git diff viewer</strong>. Aktifkan 🧠 Rencana untuk mode planner → coder.</p></div>
+      <div class="msg agent"><p>Halo! Saya <strong>MiniDevin v5</strong> — dengan <strong>streaming real-time</strong>, <strong>voice input</strong> 🎤, <strong>multi-workspace</strong>, <strong>template prompt</strong>, dan <strong>ekspor Markdown</strong>. Klik template di bawah untuk mulai cepat!</p></div>
     </div>
     <div id="typing">🤖 MiniDevin sedang bekerja…</div>
+    <div id="chips">
+      <button class="chip" onclick="useTemplate(this)">🌐 Buatkan REST API FastAPI sederhana dengan CRUD dan jalankan tesnya</button>
+      <button class="chip" onclick="useTemplate(this)">📊 Analisis data CSV yang saya upload dan buatkan grafik matplotlib</button>
+      <button class="chip" onclick="useTemplate(this)">🕸️ Riset topik ini lewat web lalu buatkan ringkasan: [topik]</button>
+      <button class="chip" onclick="useTemplate(this)">🐛 Debug kode di workspace ini dan perbaiki errornya</button>
+    </div>
     <div id="inputbar">
       <label class="toggle" title="Planner menyusun rencana dulu, lalu coder mengeksekusinya">
         <input type="checkbox" id="plan-mode"> 🧠 Rencana
@@ -133,7 +145,7 @@
     </div>
     <div class="tab-content active" id="tab-files">
       <div id="tree-head">
-        <span>sandbox/</span>
+        <span id="tree-label">sandbox/</span>
         <span>
           <button class="btn" onclick="document.getElementById('upload-input').click()">⬆ Upload</button>
           <button class="btn" onclick="refreshFiles()">↻</button>
@@ -191,6 +203,7 @@ const stopBtn = document.getElementById('stop-btn');
 const termLog = document.getElementById('terminal-log');
 let ws, running = false, sessionId = localStorage.getItem('minidevin_session');
 let streamEl = null, streamText = '', viewedPath = null;
+let currentWs = localStorage.getItem('minidevin_ws') || 'default';
 
 // Voice input (Web Speech API)
 let recog = null, micOn = false;
@@ -213,7 +226,7 @@ function toggleMic() {
 
 function connect() {
   ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
-  ws.onopen = () => ws.send(JSON.stringify({ type: 'init', session_id: sessionId }));
+  ws.onopen = () => ws.send(JSON.stringify({ type: 'init', session_id: sessionId, workspace: currentWs }));
   ws.onmessage = (e) => handleEvent(JSON.parse(e.data));
   ws.onclose = () => setTimeout(connect, 2000);
 }
@@ -264,7 +277,11 @@ function handleEvent(ev) {
   switch (ev.type) {
     case 'session':
       sessionId = ev.session_id;
+      currentWs = ev.workspace || currentWs;
       localStorage.setItem('minidevin_session', sessionId);
+      localStorage.setItem('minidevin_ws', currentWs);
+      syncWsSelect();
+      document.getElementById('tree-label').textContent = 'sandboxes/' + currentWs + '/';
       chat.querySelectorAll('.msg, details').forEach((n, i) => { if (i > 0) n.remove(); });
       streamEl = null; streamText = '';
       termLog.innerHTML = '<span style="color:#8b949e"># Log perintah bash agen akan muncul di sini</span>';
@@ -335,7 +352,48 @@ function send() {
 }
 
 function stop() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'stop' })); }
-function newSession() { if (ws && ws.readyState === 1 && !running) ws.send(JSON.stringify({ type: 'new_session' })); }
+function newSession() { if (ws && ws.readyState === 1 && !running) ws.send(JSON.stringify({ type: 'new_session', workspace: currentWs })); }
+
+function useTemplate(el) {
+  input.value = el.textContent.trim();
+  input.focus();
+}
+
+function exportSession() {
+  if (sessionId) location.href = '/api/export?id=' + encodeURIComponent(sessionId);
+}
+
+async function loadWorkspaces() {
+  const sel = document.getElementById('ws-select');
+  const list = await (await fetch('/api/workspaces')).json();
+  sel.innerHTML = '';
+  list.forEach(w => {
+    const o = document.createElement('option');
+    o.value = w; o.textContent = '📂 ' + w;
+    sel.appendChild(o);
+  });
+  const add = document.createElement('option');
+  add.value = '__new__'; add.textContent = '➕ Workspace baru…';
+  sel.appendChild(add);
+  sel.value = currentWs;
+}
+
+function syncWsSelect() {
+  const sel = document.getElementById('ws-select');
+  if (![...sel.options].some(o => o.value === currentWs)) loadWorkspaces();
+  else sel.value = currentWs;
+}
+
+function switchWorkspace(val) {
+  if (val === '__new__') {
+    const name = prompt('Nama workspace baru (huruf/angka/-/_):', '');
+    if (!name) { syncWsSelect(); return; }
+    currentWs = name.replace(/[^A-Za-z0-9._-]/g, '_') || 'default';
+  } else currentWs = val;
+  localStorage.setItem('minidevin_ws', currentWs);
+  if (ws && ws.readyState === 1 && !running) ws.send(JSON.stringify({ type: 'new_session', workspace: currentWs }));
+  loadWorkspaces();
+}
 
 input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
@@ -349,7 +407,7 @@ function switchTab(name) {
 
 async function refreshFiles() {
   try {
-    const tree = await (await fetch('/api/files')).json();
+    const tree = await (await fetch('/api/files?ws=' + encodeURIComponent(currentWs))).json();
     const el = document.getElementById('file-tree');
     el.innerHTML = '';
     const ul = document.createElement('ul');
@@ -376,7 +434,7 @@ function renderNode(node, prefix) {
 }
 
 async function viewFile(path) {
-  const r = await (await fetch('/api/file?path=' + encodeURIComponent(path))).json();
+  const r = await (await fetch('/api/file?ws=' + encodeURIComponent(currentWs) + '&path=' + encodeURIComponent(path))).json();
   viewedPath = r.error ? null : r.path;
   document.getElementById('viewer-path').textContent = r.error ? '⚠️ ' + r.error : 'sandbox/' + r.path;
   document.getElementById('viewer-actions').style.display = r.error ? 'none' : '';
@@ -388,13 +446,13 @@ async function saveViewedFile() {
   if (!viewedPath) return;
   const r = await (await fetch('/api/file', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: viewedPath, content: document.getElementById('viewer-content').value })
+    body: JSON.stringify({ path: viewedPath, content: document.getElementById('viewer-content').value, ws: currentWs })
   })).json();
   document.getElementById('viewer-path').textContent = r.ok ? `sandbox/${r.path} — ✅ tersimpan (${r.size} bytes)` : '⚠️ ' + r.error;
 }
 
 function downloadViewedFile() {
-  if (viewedPath) location.href = '/api/download?path=' + encodeURIComponent(viewedPath);
+  if (viewedPath) location.href = '/api/download?ws=' + encodeURIComponent(currentWs) + '&path=' + encodeURIComponent(viewedPath);
 }
 
 async function uploadFile(inputEl) {
@@ -402,7 +460,7 @@ async function uploadFile(inputEl) {
   if (!f) return;
   const fd = new FormData();
   fd.append('file', f);
-  const r = await (await fetch('/api/upload', { method: 'POST', body: fd })).json();
+  const r = await (await fetch('/api/upload?ws=' + encodeURIComponent(currentWs), { method: 'POST', body: fd })).json();
   inputEl.value = '';
   if (r.error) alert('Upload gagal: ' + r.error);
   refreshFiles();
@@ -410,7 +468,7 @@ async function uploadFile(inputEl) {
 
 async function refreshGit() {
   try {
-    const r = await (await fetch('/api/git/log')).json();
+    const r = await (await fetch('/api/git/log?ws=' + encodeURIComponent(currentWs))).json();
     const el = document.getElementById('git-log');
     el.innerHTML = '';
     if (!r.commits || !r.commits.length) {
@@ -433,7 +491,7 @@ async function refreshGit() {
 async function showDiff(sha) {
   const el = document.getElementById('git-diff');
   el.textContent = 'Memuat diff…';
-  const r = await (await fetch('/api/git/diff?sha=' + encodeURIComponent(sha))).json();
+  const r = await (await fetch('/api/git/diff?ws=' + encodeURIComponent(currentWs) + '&sha=' + encodeURIComponent(sha))).json();
   el.textContent = r.diff || r.error || '(kosong)';
 }
 
@@ -447,6 +505,7 @@ async function refreshStatus() {
   }
 }
 refreshStatus();
+loadWorkspaces();
 refreshFiles();
 
 function openSettings() {

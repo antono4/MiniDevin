@@ -9,11 +9,11 @@ import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, Query, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .agent import WORKSPACE, git_snapshot, make_plan, run_agent
+from .agent import WORKSPACE, WORKSPACES_ROOT, git_snapshot, make_plan, run_agent, workspace_path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -86,25 +86,31 @@ def _tree(root: Path, depth: int, limit: list) -> dict:
     return node
 
 
+@app.get("/api/workspaces")
+async def list_workspaces():
+    return sorted(p.name for p in WORKSPACES_ROOT.iterdir() if p.is_dir() and not p.name.startswith("."))
+
+
 @app.get("/api/files")
-async def list_files():
-    return _tree(WORKSPACE, 4, [0])
+async def list_files(ws: str = Query("default")):
+    return _tree(workspace_path(ws), 4, [0])
 
 
-def _resolve_file(path: str) -> Path | None:
-    p = (WORKSPACE / path).resolve()
-    if not str(p).startswith(str(WORKSPACE) + os.sep) or not p.is_file():
+def _resolve_file(path: str, ws: str = "default") -> Path | None:
+    w = workspace_path(ws)
+    p = (w / path).resolve()
+    if not str(p).startswith(str(w) + os.sep) or not p.is_file():
         return None
     return p
 
 
 @app.get("/api/file")
-async def read_file(path: str = Query(...)):
-    p = _resolve_file(path)
+async def read_file(path: str = Query(...), ws: str = Query("default")):
+    p = _resolve_file(path, ws)
     if not p:
         return JSONResponse({"error": "invalid path"}, status_code=400)
     try:
-        return {"path": str(p.relative_to(WORKSPACE)), "content": p.read_text()[:100_000]}
+        return {"path": str(p.relative_to(workspace_path(ws))), "content": p.read_text()[:100_000]}
     except UnicodeDecodeError:
         return JSONResponse({"error": "binary file"}, status_code=400)
 
@@ -112,45 +118,48 @@ async def read_file(path: str = Query(...)):
 class FileSave(BaseModel):
     path: str
     content: str
+    ws: str = "default"
 
 
 @app.post("/api/file")
 async def save_file(f: FileSave):
-    p = (WORKSPACE / f.path).resolve()
-    if not str(p).startswith(str(WORKSPACE) + os.sep):
+    w = workspace_path(f.ws)
+    p = (w / f.path).resolve()
+    if not str(p).startswith(str(w) + os.sep):
         return JSONResponse({"error": "invalid path"}, status_code=400)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(f.content)
-    return {"ok": True, "path": str(p.relative_to(WORKSPACE)), "size": len(f.content)}
+    return {"ok": True, "path": str(p.relative_to(w)), "size": len(f.content)}
 
 
 @app.get("/api/download")
-async def download_file(path: str = Query(...)):
-    p = _resolve_file(path)
+async def download_file(path: str = Query(...), ws: str = Query("default")):
+    p = _resolve_file(path, ws)
     if not p:
         return JSONResponse({"error": "invalid path"}, status_code=400)
     return FileResponse(p, filename=p.name)
 
 
 @app.post("/api/upload")
-async def upload(file: UploadFile):
+async def upload(file: UploadFile, ws: str = Query("default")):
     name = Path(file.filename or "").name
     if not name:
         return JSONResponse({"error": "invalid filename"}, status_code=400)
     data = await file.read()
     if len(data) > 20 * 1024 * 1024:
         return JSONResponse({"error": "file too large (max 20MB)"}, status_code=400)
-    (WORKSPACE / name).write_bytes(data)
+    (workspace_path(ws) / name).write_bytes(data)
     return {"ok": True, "path": name, "size": len(data)}
 
 
 @app.get("/api/git/log")
-async def git_log():
-    if not (WORKSPACE / ".git").exists():
+async def git_log(ws: str = Query("default")):
+    w = workspace_path(ws)
+    if not (w / ".git").exists():
         return {"commits": []}
     r = subprocess.run(
         ["git", "log", "--format=%h%x1f%s", "-20"],
-        cwd=WORKSPACE, capture_output=True, text=True,
+        cwd=w, capture_output=True, text=True,
     )
     commits = [
         {"sha": sha, "msg": msg}
@@ -161,12 +170,13 @@ async def git_log():
 
 
 @app.get("/api/git/diff")
-async def git_diff(sha: str = Query(...)):
-    if not (WORKSPACE / ".git").exists() or not sha.replace("~", "").replace("^", "").isalnum():
+async def git_diff(sha: str = Query(...), ws: str = Query("default")):
+    w = workspace_path(ws)
+    if not (w / ".git").exists() or not sha.replace("~", "").replace("^", "").isalnum():
         return JSONResponse({"error": "invalid"}, status_code=400)
     r = subprocess.run(
         ["git", "show", "--stat", "--patch", "--format=commit %h%n%s%n", sha],
-        cwd=WORKSPACE, capture_output=True, text=True,
+        cwd=w, capture_output=True, text=True,
     )
     return {"diff": r.stdout[:12000]}
 
@@ -186,6 +196,44 @@ async def list_sessions():
 def _save_session(session: dict):
     session["updated"] = time.time()
     (SESSIONS_DIR / f"{session['id']}.json").write_text(json.dumps(session))
+
+
+def _md_escape(text: str) -> str:
+    return text.replace("```", "\\`\\`\\`")
+
+
+@app.get("/api/export")
+async def export_session(id: str = Query(...)):
+    f = SESSIONS_DIR / f"{id}.json"
+    if not f.exists():
+        return JSONResponse({"error": "session not found"}, status_code=404)
+    d = json.loads(f.read_text())
+    lines = [
+        f"# 🐚 MiniDevin — {d.get('title', 'Percakapan')}",
+        f"_Diekspor {time.strftime('%Y-%m-%d %H:%M', time.localtime(d.get('updated', 0)))} "
+        f"· workspace: `{d.get('workspace', 'default')}`_\n",
+    ]
+    for ev in d.get("events", []):
+        t = ev["type"]
+        if t == "user":
+            lines.append(f"## 👤 User\n\n{ev['content']}\n")
+        elif t == "message":
+            lines.append(f"## 🐚 MiniDevin\n\n{ev['content']}\n")
+        elif t == "thought":
+            lines.append(f"> 💭 {ev['content']}\n")
+        elif t == "plan":
+            lines.append(f"## 🧠 Rencana\n\n{ev['content']}\n")
+        elif t == "action":
+            label = {"run_bash": "bash", "web_fetch": "url"}.get(ev["tool"], ev["tool"])
+            body = ev["args"].get("command") or ev["args"].get("url") or json.dumps(ev["args"], ensure_ascii=False)
+            lines.append(f"**🔧 {label}**\n\n```\n{_md_escape(body[:2000])}\n```\n")
+        elif t == "observation":
+            lines.append(f"<details><summary>📋 Observasi ({ev['tool']})</summary>\n\n```\n{_md_escape(ev['content'][:3000])}\n```\n</details>\n")
+        elif t == "error":
+            lines.append(f"**⚠️ Error:** {ev['content']}\n")
+    md = "\n".join(lines)
+    return Response(md, media_type="text/markdown",
+                    headers={"Content-Disposition": f'attachment; filename="minidevin-{id}.md"'})
 
 
 SAVED_EVENTS = ("thought", "message", "action", "observation", "error", "plan")
@@ -217,19 +265,23 @@ async def ws(websocket: WebSocket):
                     history = session.get("history", [])
                 else:
                     session = {"id": uuid.uuid4().hex[:12], "title": "Percakapan baru",
-                               "updated": time.time(), "events": [], "history": []}
+                               "updated": time.time(), "events": [], "history": [],
+                               "workspace": data.get("workspace") or "default"}
                 await websocket.send_text(json.dumps({
                     "type": "session", "session_id": session["id"],
                     "title": session["title"], "events": session["events"],
+                    "workspace": session.get("workspace", "default"),
                 }))
 
             elif mtype == "new_session":
                 session = {"id": uuid.uuid4().hex[:12], "title": "Percakapan baru",
-                           "updated": time.time(), "events": [], "history": []}
+                           "updated": time.time(), "events": [], "history": [],
+                           "workspace": data.get("workspace") or "default"}
                 history = []
                 await websocket.send_text(json.dumps({
                     "type": "session", "session_id": session["id"],
                     "title": session["title"], "events": [],
+                    "workspace": session["workspace"],
                 }))
 
             elif mtype == "stop":
@@ -255,7 +307,8 @@ async def ws(websocket: WebSocket):
                         await emit({"type": "plan", "content": plan_text})
 
                     current_task = asyncio.create_task(
-                        run_agent(data["message"], history, CONFIG, emit, cancel, plan=plan_text)
+                        run_agent(data["message"], history, CONFIG, emit, cancel,
+                                  plan=plan_text, workspace=session.get("workspace", "default"))
                     )
                     await current_task
                     history.append({"role": "user", "content": data["message"]})
@@ -263,7 +316,9 @@ async def ws(websocket: WebSocket):
                     history[:] = history[-20:]
                     session["history"] = history
 
-                    snap = await asyncio.to_thread(git_snapshot, f"task: {session['title']}")
+                    snap = await asyncio.to_thread(
+                        git_snapshot, f"task: {session['title']}",
+                        workspace_path(session.get("workspace", "default")))
                     if "perubahan" not in snap and "tidak tersedia" not in snap:
                         await emit({"type": "observation", "tool": "git", "content": f"📸 Snapshot git:\n{snap}"})
                 except asyncio.CancelledError:

@@ -13,8 +13,22 @@ from pathlib import Path
 import openai
 from openai import AsyncOpenAI
 
-WORKSPACE = Path(os.environ.get("MINIDEVIN_WORKSPACE", "/workspace/project/sandbox")).resolve()
+WORKSPACES_ROOT = Path(os.environ.get("MINIDEVIN_WORKSPACES", "/workspace/project/sandboxes")).resolve()
+WORKSPACES_ROOT.mkdir(parents=True, exist_ok=True)
+# Backward-compat: single default workspace
+WORKSPACE = WORKSPACES_ROOT / "default"
 WORKSPACE.mkdir(parents=True, exist_ok=True)
+
+
+def workspace_path(name: str | None) -> Path:
+    """Resolve a workspace name to its directory, guarding against traversal."""
+    name = (name or "default").strip() or "default"
+    safe = re.sub(r"[^A-Za-z0-9._-]", "_", name)
+    p = (WORKSPACES_ROOT / safe).resolve()
+    if not str(p).startswith(str(WORKSPACES_ROOT) + os.sep):
+        p = WORKSPACE
+    p.mkdir(parents=True, exist_ok=True)
+    return p
 
 MAX_STEPS = 40
 BASH_TIMEOUT = 120
@@ -151,9 +165,10 @@ TOOLS = [
 ]
 
 
-def _safe_path(path: str) -> Path:
-    p = (WORKSPACE / path).resolve()
-    if p != WORKSPACE and not str(p).startswith(str(WORKSPACE) + os.sep):
+def _safe_path(path: str, ws: Path | None = None) -> Path:
+    ws = ws or WORKSPACE
+    p = (ws / path).resolve()
+    if p != ws and not str(p).startswith(str(ws) + os.sep):
         raise ValueError(f"Path escapes workspace: {path}")
     return p
 
@@ -164,12 +179,13 @@ def _truncate(text: str) -> str:
     return text
 
 
-def tool_run_bash(command: str) -> str:
+def tool_run_bash(command: str, ws: Path | None = None) -> str:
+    ws = ws or WORKSPACE
     if any(b in command for b in BLOCKED_SUBSTRINGS):
         return "Error: command blocked by safety guard."
     try:
         proc = subprocess.run(
-            command, shell=True, cwd=WORKSPACE, capture_output=True,
+            command, shell=True, cwd=ws, capture_output=True,
             text=True, timeout=BASH_TIMEOUT,
         )
         out = proc.stdout + proc.stderr
@@ -178,19 +194,21 @@ def tool_run_bash(command: str) -> str:
         return f"Error: command timed out after {BASH_TIMEOUT}s"
 
 
-def tool_write_file(path: str, content: str) -> str:
+def tool_write_file(path: str, content: str, ws: Path | None = None) -> str:
+    ws = ws or WORKSPACE
     try:
-        p = _safe_path(path)
+        p = _safe_path(path, ws)
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(content)
-        return f"Wrote {len(content)} chars to {p.relative_to(WORKSPACE)}"
+        return f"Wrote {len(content)} chars to {p.relative_to(ws)}"
     except Exception as e:
         return f"Error: {e}"
 
 
-def tool_edit_file(path: str, old_str: str, new_str: str) -> str:
+def tool_edit_file(path: str, old_str: str, new_str: str, ws: Path | None = None) -> str:
+    ws = ws or WORKSPACE
     try:
-        p = _safe_path(path)
+        p = _safe_path(path, ws)
         text = p.read_text()
         count = text.count(old_str)
         if count == 0:
@@ -198,21 +216,22 @@ def tool_edit_file(path: str, old_str: str, new_str: str) -> str:
         if count > 1:
             return f"Error: old_str appears {count} times; it must be unique. Include more context."
         p.write_text(text.replace(old_str, new_str, 1))
-        return f"Edited {p.relative_to(WORKSPACE)}"
+        return f"Edited {p.relative_to(ws)}"
     except Exception as e:
         return f"Error: {e}"
 
 
-def tool_read_file(path: str) -> str:
+def tool_read_file(path: str, ws: Path | None = None) -> str:
     try:
-        return _truncate(_safe_path(path).read_text())
+        return _truncate(_safe_path(path, ws or WORKSPACE).read_text())
     except Exception as e:
         return f"Error: {e}"
 
 
-def tool_list_files(path: str = ".", depth: int = 2) -> str:
+def tool_list_files(path: str = ".", depth: int = 2, ws: Path | None = None) -> str:
+    ws = ws or WORKSPACE
     try:
-        root = _safe_path(path)
+        root = _safe_path(path, ws)
         if not root.is_dir():
             return f"Error: not a directory: {path}"
         lines, count = [], [0]
@@ -233,7 +252,7 @@ def tool_list_files(path: str = ".", depth: int = 2) -> str:
                 if e.is_dir():
                     walk(e, prefix + ("    " if i == len(entries) - 1 else "│   "), level + 1)
 
-        lines.append(str(root.relative_to(WORKSPACE)) if root != WORKSPACE else ".")
+        lines.append(str(root.relative_to(ws)) if root != ws else ".")
         walk(root, "", 1)
         return "\n".join(lines)
     except Exception as e:
@@ -253,17 +272,17 @@ def tool_web_fetch(url: str) -> str:
         return f"Error: {e}"
 
 
-def execute_tool(name: str, args: dict) -> str:
+def execute_tool(name: str, args: dict, ws: Path | None = None) -> str:
     if name == "run_bash":
-        return tool_run_bash(args["command"])
+        return tool_run_bash(args["command"], ws)
     if name == "write_file":
-        return tool_write_file(args["path"], args["content"])
+        return tool_write_file(args["path"], args["content"], ws)
     if name == "edit_file":
-        return tool_edit_file(args["path"], args["old_str"], args["new_str"])
+        return tool_edit_file(args["path"], args["old_str"], args["new_str"], ws)
     if name == "read_file":
-        return tool_read_file(args["path"])
+        return tool_read_file(args["path"], ws)
     if name == "list_files":
-        return tool_list_files(args.get("path", "."), int(args.get("depth", 2)))
+        return tool_list_files(args.get("path", "."), int(args.get("depth", 2)), ws)
     if name == "web_fetch":
         return tool_web_fetch(args["url"])
     if name == "finish":
@@ -330,7 +349,8 @@ async def make_plan(task: str, config: dict) -> str:
     return resp.choices[0].message.content or ""
 
 
-def git_snapshot(message: str) -> str:
+def git_snapshot(message: str, ws: Path | None = None) -> str:
+    ws = ws or WORKSPACE
     """Commit current workspace state. Returns result text."""
     if not shutil.which("git"):
         return "git tidak tersedia"
@@ -338,9 +358,9 @@ def git_snapshot(message: str) -> str:
     opts = ["-c", "user.name=MiniDevin", "-c", "user.email=minidevin@localhost"]
 
     def run(*args):
-        return subprocess.run(["git", *opts, *args], cwd=WORKSPACE, capture_output=True, text=True, env=env)
+        return subprocess.run(["git", *opts, *args], cwd=ws, capture_output=True, text=True, env=env)
 
-    if not (WORKSPACE / ".git").exists():
+    if not (ws / ".git").exists():
         run("init")
         run("add", "-A")
     status = run("status", "--porcelain")
@@ -352,10 +372,11 @@ def git_snapshot(message: str) -> str:
 
 
 async def run_agent(user_message: str, history: list, config: dict, emit, cancel: asyncio.Event,
-                    plan: str | None = None) -> dict:
+                    plan: str | None = None, workspace: str | None = None) -> dict:
     """Run the agent loop. `emit` sends event dicts to the client. Returns usage stats."""
+    ws = workspace_path(workspace)
     client = AsyncOpenAI(api_key=config["api_key"], base_url=config.get("base_url") or None)
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages = [{"role": "system", "content": SYSTEM_PROMPT.replace(str(WORKSPACE), str(ws))}]
     if plan:
         messages.append({"role": "system", "content": f"Rencana yang harus Anda ikuti:\n{plan}"})
     messages += history
@@ -401,7 +422,7 @@ async def run_agent(user_message: str, history: list, config: dict, emit, cancel
                 args = {}
             await emit({"type": "action", "tool": name, "args": args})
 
-            result = await asyncio.to_thread(execute_tool, name, args)
+            result = await asyncio.to_thread(execute_tool, name, args, ws)
             if result == "__FINISH__":
                 await emit({"type": "message", "content": args.get("summary", "Done.")})
                 await emit({"type": "done", **usage})
