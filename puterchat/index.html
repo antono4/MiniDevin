@@ -2,7 +2,8 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e14">
 <title>PuterChat — AI Chat Studio</title>
 <script src="https://js.puter.com/v2/"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
@@ -156,14 +157,67 @@
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--faint); }
 
+  /* ---------- responsive ---------- */
+  /* backdrop untuk drawer mobile */
+  #backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55);
+    z-index: 15; opacity: 0; transition: opacity .25s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #backdrop.show { opacity: 1; }
+
+  /* tablet kecil */
+  @media (max-width: 900px) {
+    select.model { max-width: 170px; font-size: 12px; }
+    #chat, #typing, #composer { padding-left: 16px; padding-right: 16px; }
+  }
+
+  /* ponsel (Android, iPhone) */
   @media (max-width: 720px) {
-    #sidebar { position: absolute; z-index: 20; height: 100%; box-shadow: 4px 0 24px rgba(0,0,0,.5); }
-    #home h2 { font-size: 28px; }
+    #sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 20; height: 100dvh;
+      box-shadow: 4px 0 24px rgba(0,0,0,.5);
+      width: min(300px, 84vw);
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    #sidebar.hidden { margin-left: calc(-1 * min(300px, 84vw) - 10px); }
+    #topbar { padding: 10px 12px; gap: 6px; padding-top: calc(10px + env(safe-area-inset-top)); }
+    select.model { max-width: 150px; font-size: 11.5px; padding: 7px 8px; }
+    #home { padding: 16px; }
+    #home h2 { font-size: 27px; }
+    #home p.sub { font-size: 13.5px; margin-bottom: 26px; }
+    #suggests { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .sugg { padding: 12px 13px; font-size: 12px; border-radius: 12px; }
+    .sugg .ico { font-size: 16px; margin-bottom: 5px; }
+    .msg .avatar { width: 27px; height: 27px; font-size: 13px; }
+    .msg { gap: 10px; font-size: 14px; }
+    #chat { padding: 18px 12px 8px; gap: 16px; }
+    #composer-wrap { padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); }
+    #composer { border-radius: 14px; }
+    #input { font-size: 16px; } /* mencegah auto-zoom di iOS */
+    .hint-text { display: none; }
+    .hero-badge { font-size: 10px; padding: 5px 12px; margin-bottom: 18px; }
+  }
+
+  /* ponsel sangat kecil (≤380px, iPhone SE dll) */
+  @media (max-width: 380px) {
+    #suggests { grid-template-columns: 1fr; }
+    select.model { max-width: 118px; }
+    #home h2 { font-size: 24px; }
+  }
+
+  /* layar besar */
+  @media (min-width: 1400px) {
+    #chat, #typing { max-width: 900px; }
+    #composer { max-width: 900px; }
+    #suggests { max-width: 860px; }
   }
 </style>
 </head>
 <body>
 
+<div id="backdrop" onclick="closeSidebar()"></div>
 <aside id="sidebar">
   <div class="sb-head">
     <div class="logo-mark">P</div>
@@ -282,14 +336,32 @@ function showHome(show) {
   chatWrap.style.display = show ? 'none' : 'block';
 }
 
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('hidden'); }
+const sidebarEl = document.getElementById('sidebar');
+const backdropEl = document.getElementById('backdrop');
+const isMobile = () => window.innerWidth <= 720;
+
+function updateBackdrop() {
+  const open = isMobile() && !sidebarEl.classList.contains('hidden');
+  backdropEl.classList.toggle('show', open);
+  backdropEl.style.display = open ? 'block' : 'none';
+}
+function toggleSidebar() {
+  sidebarEl.classList.toggle('hidden');
+  updateBackdrop();
+}
+function closeSidebar() {
+  sidebarEl.classList.add('hidden');
+  updateBackdrop();
+}
 function toggleTheme() {
   const cur = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
   document.documentElement.dataset.theme = cur;
   localStorage.setItem('puterchat_theme', cur);
 }
 if (localStorage.getItem('puterchat_theme') === 'light') document.documentElement.dataset.theme = 'light';
-if (window.innerWidth < 720) document.getElementById('sidebar').classList.add('hidden');
+if (isMobile()) sidebarEl.classList.add('hidden');
+updateBackdrop();
+window.addEventListener('resize', updateBackdrop);
 
 async function loadModels() {
   let models = FALLBACK_MODELS;
@@ -379,7 +451,7 @@ function openChat(id) {
   (conversations[id].messages || []).forEach(m => addMsg(m.role, m.content, m.role !== 'user'));
   showHome(false);
   renderConvoList();
-  if (window.innerWidth < 720) document.getElementById('sidebar').classList.add('hidden');
+  if (isMobile()) closeSidebar();
 }
 function newChat() {
   currentId = null;
