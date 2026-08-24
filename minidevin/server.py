@@ -198,6 +198,34 @@ def _save_session(session: dict):
     (SESSIONS_DIR / f"{session['id']}.json").write_text(json.dumps(session))
 
 
+@app.delete("/api/sessions/{sid}")
+async def delete_session(sid: str):
+    f = SESSIONS_DIR / f"{sid}.json"
+    if not f.exists():
+        return JSONResponse({"error": "not found"}, status_code=404)
+    f.unlink()
+    return {"ok": True}
+
+
+@app.get("/api/sessions/search")
+async def search_sessions(q: str = Query("")):
+    q = q.lower().strip()
+    out = []
+    for f in sorted(SESSIONS_DIR.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True):
+        try:
+            d = json.loads(f.read_text())
+        except Exception:
+            continue
+        if not q or q in d.get("title", "").lower():
+            out.append({"id": d["id"], "title": d.get("title", "Untitled"), "updated": d.get("updated", 0)})
+            continue
+        for ev in d.get("events", []):
+            if q in str(ev.get("content", "")).lower():
+                out.append({"id": d["id"], "title": d.get("title", "Untitled"), "updated": d.get("updated", 0)})
+                break
+    return out[:50]
+
+
 def _md_escape(text: str) -> str:
     return text.replace("```", "\\`\\`\\`")
 
@@ -292,26 +320,50 @@ async def ws(websocket: WebSocket):
             elif mtype == "chat":
                 if session is None:
                     continue
+                msg = data["message"].strip()
+                if msg == "/reset":
+                    history.clear()
+                    session["history"] = []
+                    session["events"] = []
+                    _save_session(session)
+                    await websocket.send_text(json.dumps({
+                        "type": "session", "session_id": session["id"],
+                        "title": session["title"], "events": [],
+                        "workspace": session.get("workspace", "default"),
+                    }))
+                    await emit({"type": "message", "content": "🔄 Konteks percakapan direset. Silakan mulai dari awal."})
+                    continue
                 if not CONFIG["api_key"]:
                     await emit({"type": "error", "content": "LLM belum dikonfigurasi. Klik ⚙️ Settings dan masukkan API key Anda."})
                     continue
+                plan_flag = bool(data.get("plan"))
+                if msg.startswith("/plan "):
+                    plan_flag = True
+                    msg = msg[6:]
+                if msg.startswith("/web "):
+                    msg = ("Gunakan tool web_fetch untuk meneliti URL/topik berikut, lalu jawab "
+                           "pertanyaan user berdasarkan hasilnya. Jangan tulis file apa pun kecuali diminta. "
+                           "Topik: " + msg[5:])
+                elif msg.startswith("/run "):
+                    msg = ("Jalankan perintah bash berikut persis seperti tertulis dengan run_bash, "
+                           "lalu laporkan outputnya apa adanya: " + msg[5:])
                 if session["title"] == "Percakapan baru":
-                    session["title"] = data["message"][:60]
+                    session["title"] = msg[:60]
                 session["events"].append({"type": "user", "content": data["message"]})
                 cancel = asyncio.Event()
                 try:
                     plan_text = None
-                    if data.get("plan"):
+                    if plan_flag:
                         await emit({"type": "step", "step": 0})
-                        plan_text = await make_plan(data["message"], CONFIG)
+                        plan_text = await make_plan(msg, CONFIG)
                         await emit({"type": "plan", "content": plan_text})
 
                     current_task = asyncio.create_task(
-                        run_agent(data["message"], history, CONFIG, emit, cancel,
+                        run_agent(msg, history, CONFIG, emit, cancel,
                                   plan=plan_text, workspace=session.get("workspace", "default"))
                     )
                     await current_task
-                    history.append({"role": "user", "content": data["message"]})
+                    history.append({"role": "user", "content": msg})
                     history.append({"role": "assistant", "content": "(task processed)"})
                     history[:] = history[-20:]
                     session["history"] = history

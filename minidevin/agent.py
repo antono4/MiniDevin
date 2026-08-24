@@ -153,6 +153,22 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "set_api_key",
+            "description": "Update the LLM API key at runtime. Use when the user provides a new key in chat.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "api_key": {"type": "string", "description": "The new API key."},
+                    "model": {"type": "string", "description": "Optional: also switch model."},
+                    "base_url": {"type": "string", "description": "Optional: also switch base URL."},
+                },
+                "required": ["api_key"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "finish",
             "description": "Call when the task is complete. Provide a final summary for the user (Markdown allowed).",
             "parameters": {
@@ -272,7 +288,7 @@ def tool_web_fetch(url: str) -> str:
         return f"Error: {e}"
 
 
-def execute_tool(name: str, args: dict, ws: Path | None = None) -> str:
+def execute_tool(name: str, args: dict, ws: Path | None = None, config: dict | None = None) -> str:
     if name == "run_bash":
         return tool_run_bash(args["command"], ws)
     if name == "write_file":
@@ -285,6 +301,14 @@ def execute_tool(name: str, args: dict, ws: Path | None = None) -> str:
         return tool_list_files(args.get("path", "."), int(args.get("depth", 2)), ws)
     if name == "web_fetch":
         return tool_web_fetch(args["url"])
+    if name == "set_api_key":
+        if config is not None:
+            config["api_key"] = args["api_key"]
+            if args.get("model"):
+                config["model"] = args["model"]
+            if args.get("base_url"):
+                config["base_url"] = args["base_url"]
+        return "API key diperbarui."
     if name == "finish":
         return "__FINISH__"
     return f"Error: unknown tool {name}"
@@ -422,7 +446,7 @@ async def run_agent(user_message: str, history: list, config: dict, emit, cancel
                 args = {}
             await emit({"type": "action", "tool": name, "args": args})
 
-            result = await asyncio.to_thread(execute_tool, name, args, ws)
+            result = await asyncio.to_thread(execute_tool, name, args, ws, config)
             if result == "__FINISH__":
                 await emit({"type": "message", "content": args.get("summary", "Done.")})
                 await emit({"type": "done", **usage})
