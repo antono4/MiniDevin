@@ -12,7 +12,11 @@
 ## ✨ Fitur Frontend (Serverless)
 
 - 🤖 **500+ model AI** via `puter.ai.chat()` — pilih dari dropdown (`puter.ai.listModels()`)
-- ⚡ **Streaming real-time** (bisa dimatikan) dengan tombol salin kode
+- ⚡ **Streaming real-time** (bisa dimatikan) dengan tombol salin kode di setiap blok
+- ⏹ **Kontrol generasi** — tombol Stop (`⏹`) untuk menghentikan respons AI seketika
+- 📥 **Ekspor percakapan** — simpan riwayat chat sebagai berkas Markdown (`.md`) atau JSON
+- ✏️ **Kelola percakapan** — ganti nama (`✏️`) dan hapus (`🗑`) thread dari sidebar
+- 🎤 **Input suara** — dikte prompt langsung lewat mikrofon (Web Speech API)
 - 🎨 **Text-to-image** — ketik `/gambar <deskripsi>` (`puter.ai.txt2img()`)
 - 🔑 **Auth Puter** — login akun Puter; riwayat chat tersimpan di cloud (`puter.kv`, key `minidevin_convos`), fallback ke localStorage
 - 🌓 Tema gelap/terang · 📱 responsif penuh (drawer mobile, safe-area iOS)

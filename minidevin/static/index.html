@@ -66,8 +66,9 @@
   .convo:hover { background: var(--base-tertiary); color: var(--content); }
   .convo.active { background: var(--primary-dim); color: var(--content); }
   .convo .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .convo .d { background: none; border: none; color: var(--error-border); cursor: pointer; visibility: hidden; font-size: 12px; }
-  .convo:hover .d { visibility: visible; }
+  .convo .d, .convo .r { background: none; border: none; color: var(--content-3); cursor: pointer; visibility: hidden; font-size: 12px; padding: 2px; }
+  .convo .d { color: var(--error-border); }
+  .convo:hover .d, .convo:hover .r { visibility: visible; }
   .sb-foot { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 4px; align-items: center; }
   .sb-foot .icon-btn { font-size: 15px; }
 
@@ -139,6 +140,14 @@
   .mini-toggle { display: flex; align-items: center; gap: 6px; color: var(--content-2); font-size: 12px; cursor: pointer; }
   .mini-toggle input { accent-color: var(--primary); }
   .hint-text { font-size: 11px; color: var(--content-3); }
+  #mic-btn {
+    width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+    background: none; color: var(--content-2); font-size: 15px; cursor: pointer;
+    display: none; align-items: center; justify-content: center; transition: all .12s;
+  }
+  #mic-btn:hover { background: var(--base-tertiary); color: var(--content); }
+  #mic-btn.recording { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); animation: micpulse 1.2s infinite; }
+  @keyframes micpulse { 50% { box-shadow: 0 0 0 5px rgba(229, 72, 77, .18); } }
   #send-btn {
     margin-left: auto; width: 34px; height: 34px; border-radius: 8px; border: none;
     background: var(--primary); color: #0d0f12; font-size: 15px; cursor: pointer;
@@ -146,6 +155,7 @@
   }
   #send-btn:hover { filter: brightness(1.1); }
   #send-btn:disabled { background: var(--base-tertiary); color: var(--content-3); cursor: default; filter: none; }
+  #send-btn.stop { background: var(--error-border); color: #fff; }
 
   /* scrollbars */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -210,6 +220,9 @@
   <div id="topbar">
     <button class="icon-btn" onclick="toggleSidebar()" title="Sidebar">☰</button>
     <span id="topbar-title" style="font-size:14px;font-weight:600;color:var(--content-2)">New conversation</span>
+    <span id="model-chip" style="font-size:11px;color:var(--content-3);background:var(--base-tertiary);border-radius:12px;padding:3px 10px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <span class="spacer"></span>
+    <button class="icon-btn" id="export-btn" onclick="exportChat('md')" title="Ekspor chat sebagai Markdown" style="display:none">📥</button>
   </div>
 
   <div id="home">
@@ -234,6 +247,7 @@
         <select class="model" id="model-select" title="Model AI"></select>
         <label class="mini-toggle"><input type="checkbox" id="stream-mode" checked> ⚡ Stream</label>
         <span class="hint-text">Enter ↵ kirim · Shift+Enter baris baru</span>
+        <button id="mic-btn" onclick="toggleMic()" title="Input suara">🎤</button>
         <button id="send-btn" onclick="send()" title="Kirim">➤</button>
       </div>
     </div>
@@ -257,6 +271,9 @@ const SYSTEM_PROMPT = 'Anda adalah MiniDevin. Jika pengguna bertanya siapa Anda 
 let conversations = {};
 let currentId = null;
 let busy = false;
+let abortRequested = false;
+const modelChip = document.getElementById('model-chip');
+const exportBtn = document.getElementById('export-btn');
 
 function md(text) {
   try {
@@ -308,13 +325,17 @@ function addCopyButtons(root) {
 
 function setBusy(v) {
   busy = v;
-  sendBtn.disabled = v;
+  sendBtn.disabled = false;
+  sendBtn.textContent = v ? '⏹' : '➤';
+  sendBtn.title = v ? 'Berhenti' : 'Kirim';
+  sendBtn.classList.toggle('stop', v);
   typing.style.display = v ? 'block' : 'none';
 }
 function showHome(show) {
   home.style.display = show ? 'flex' : 'none';
   chatWrap.style.display = show ? 'none' : 'block';
   if (show) topbarTitle.textContent = 'New conversation';
+  exportBtn.style.display = show ? 'none' : '';
 }
 
 const sidebarEl = document.getElementById('sidebar');
@@ -360,10 +381,14 @@ async function loadModels() {
   const saved = localStorage.getItem('minidevin_model');
   modelSelect.value = saved && models.includes(saved) ? saved : models[0];
   modelSelect.title = 'Model: ' + modelSelect.value;
+  modelChip.textContent = '🤖 ' + modelSelect.value;
+  modelChip.title = 'Model aktif: ' + modelSelect.value;
 }
 modelSelect.onchange = () => {
   localStorage.setItem('minidevin_model', modelSelect.value);
   modelSelect.title = 'Model: ' + modelSelect.value;
+  modelChip.textContent = '🤖 ' + modelSelect.value;
+  modelChip.title = 'Model aktif: ' + modelSelect.value;
 };
 
 async function refreshAuth() {
@@ -419,8 +444,20 @@ function renderConvoList() {
     t.className = 't';
     t.textContent = c.title || 'Percakapan';
     t.onclick = () => openChat(id);
+    const ren = document.createElement('button');
+    ren.className = 'r'; ren.textContent = '✏️'; ren.title = 'Ganti nama';
+    ren.onclick = async (e) => {
+      e.stopPropagation();
+      const name = prompt('Nama percakapan:', conversations[id].title || 'Percakapan');
+      if (name && name.trim()) {
+        conversations[id].title = name.trim();
+        if (id === currentId) topbarTitle.textContent = conversations[id].title;
+        await saveConversations();
+        renderConvoList();
+      }
+    };
     const del = document.createElement('button');
-    del.className = 'd'; del.textContent = '🗑';
+    del.className = 'd'; del.textContent = '🗑'; del.title = 'Hapus';
     del.onclick = async (e) => {
       e.stopPropagation();
       delete conversations[id];
@@ -428,7 +465,7 @@ function renderConvoList() {
       await saveConversations();
       renderConvoList();
     };
-    d.appendChild(t); d.appendChild(del);
+    d.appendChild(t); d.appendChild(ren); d.appendChild(del);
     convoList.appendChild(d);
   });
 }
@@ -452,6 +489,62 @@ function useSugg(el) {
   input.focus();
 }
 
+/* ---------- export chat ---------- */
+function downloadFile(name, content, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function exportChat(fmt) {
+  if (!currentId || !conversations[currentId]) return;
+  const c = conversations[currentId];
+  const stamp = new Date().toISOString().slice(0, 10);
+  const base = 'minidevin-' + (c.title || 'chat').toLowerCase().replace(/[^\w\- ]/g, '').trim().replace(/\s+/g, '-').slice(0, 40) + '-' + stamp;
+  if (fmt === 'json') {
+    downloadFile(base + '.json', JSON.stringify(c, null, 2), 'application/json');
+    return;
+  }
+  const lines = ['# ' + (c.title || 'Percakapan MiniDevin'), '', '_Diekspor dari MiniDevin — ' + new Date().toLocaleString('id-ID') + '_', ''];
+  (c.messages || []).forEach(m => {
+    lines.push(m.role === 'user' ? '## 🧑 Anda' : '## 🐚 MiniDevin', '', m.content, '');
+  });
+  downloadFile(base + '.md', lines.join('\n'), 'text/markdown');
+}
+
+/* ---------- input suara ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog = null, recording = false;
+const micBtn = document.getElementById('mic-btn');
+if (SR) {
+  micBtn.style.display = 'flex';
+  recog = new SR();
+  recog.lang = 'id-ID';
+  recog.interimResults = true;
+  recog.continuous = false;
+  recog.onresult = (e) => {
+    let finalTxt = '';
+    for (const r of e.results) if (r.isFinal) finalTxt += r[0].transcript;
+    if (finalTxt) {
+      input.value = (input.value ? input.value + ' ' : '') + finalTxt.trim();
+      input.dispatchEvent(new Event('input'));
+    }
+  };
+  recog.onend = () => { recording = false; micBtn.classList.remove('recording'); };
+  recog.onerror = () => { recording = false; micBtn.classList.remove('recording'); };
+}
+function toggleMic() {
+  if (!recog) return;
+  if (recording) { recog.stop(); return; }
+  try {
+    recog.start();
+    recording = true;
+    micBtn.classList.add('recording');
+    input.focus();
+  } catch (e) {}
+}
+
 async function generateImage(prompt) {
   setBusy(true);
   typing.textContent = '🎨 Generating image…';
@@ -472,8 +565,9 @@ async function generateImage(prompt) {
 }
 
 async function send() {
+  if (busy) { abortRequested = true; return; }
   const text = input.value.trim();
-  if (!text || busy) return;
+  if (!text) return;
   input.value = '';
   input.style.height = 'auto';
 
@@ -493,6 +587,7 @@ async function send() {
     return;
   }
 
+  abortRequested = false;
   setBusy(true);
   const model = modelSelect.value;
   const history = conversations[currentId].messages.slice(-20).map(m => ({ role: m.role, content: m.content }));
@@ -504,25 +599,29 @@ async function send() {
       let full = '';
       const resp = await puter.ai.chat(messages, { model, stream: true });
       for await (const part of resp) {
+        if (abortRequested) break;
         if (part?.text) {
           full += part.text;
           body.innerHTML = md(full) + '<span class="cursor"></span>';
           scrollChat();
         }
       }
+      if (abortRequested) full += '\n\n_⏹ Dihentikan pengguna._';
       body.innerHTML = md(full);
       addCopyButtons(body);
       conversations[currentId].messages.push({ role: 'assistant', content: full });
     } else {
       const resp = await puter.ai.chat(messages, { model });
       const content = resp?.message?.content ?? resp?.text ?? String(resp);
-      const textOut = Array.isArray(content) ? content.map(c => c.text || '').join('') : content;
+      let textOut = Array.isArray(content) ? content.map(c => c.text || '').join('') : content;
+      if (abortRequested) textOut += '\n\n_⏹ Dihentikan pengguna._';
       addMsg('ai', textOut, true);
       conversations[currentId].messages.push({ role: 'assistant', content: textOut });
     }
   } catch (e) {
-    addMsg('error', '⚠️ ' + (e.message || JSON.stringify(e)));
+    if (!abortRequested) addMsg('error', '⚠️ ' + (e.message || JSON.stringify(e)));
   }
+  abortRequested = false;
   setBusy(false);
   await saveConversations();
 }
