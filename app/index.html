@@ -253,7 +253,7 @@ const convoList = document.getElementById('convo-list');
 const topbarTitle = document.getElementById('topbar-title');
 
 const FALLBACK_MODELS = ['gpt-5-nano', 'gpt-4o-mini', 'claude-sonnet-4', 'gemini-2.5-flash', 'deepseek-chat', 'grok-4'];
-const SYSTEM_PROMPT = 'Anda adalah MiniDevin, AI software engineer. Bantu pengguna menulis, menjelaskan, dan memperbaiki kode. Jawab ringkas dalam Bahasa Indonesia kecuali diminta lain. Kode selalu dalam blok markdown dengan bahasa yang jelas.';
+const SYSTEM_PROMPT = 'Anda adalah MiniDevin. Jika pengguna bertanya siapa Anda atau siapa kamu, jawab bahwa Anda adalah MiniDevin — AI software engineer. Bantu pengguna menulis, menjelaskan, dan memperbaiki kode. Jawab ringkas dalam Bahasa Indonesia kecuali diminta lain. Kode selalu dalam blok markdown dengan bahasa yang jelas.';
 let conversations = {};
 let currentId = null;
 let busy = false;
