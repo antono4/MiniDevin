@@ -1,7 +1,7 @@
 <div align="center">
   <img src="minidevin.jpg" alt="MiniDevin" width="480">
 
-  # 🐚 MiniDevin — Code Less, Make More
+  # MiniDevin — Code Less, Make More
 
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
   [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://antono4.github.io/MiniDevin/)
