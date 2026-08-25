@@ -3,210 +3,184 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0a0e14">
-<title>🐚 MiniDevin — AI Software Engineer</title>
+<meta name="theme-color" content="#0d0f12">
+<title>MiniDevin</title>
 <script src="https://js.puter.com/v2/"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0e14; --bg2: #11161f; --bg3: #1a2230; --border: #232d3d;
-    --text: #e8eef6; --muted: #7d8ba0; --faint: #55617a;
-    --mint: #4be1b4; --mint-dim: rgba(75, 225, 180, .12); --mint-glow: rgba(75, 225, 180, .25);
-    --violet: #8b7cf6; --amber: #f0b35e;
-    --err-bg: #2a1418; --err-border: #e5484d; --err-text: #ff9aa0;
-    --font-display: 'Syne', sans-serif;
-    --font-body: 'Instrument Sans', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+    --background: #0d0f12;
+    --base-secondary: #13171b;
+    --base-tertiary: #1b2127;
+    --border: #282f38;
+    --content: #e6e9ec;
+    --content-2: #929eab;
+    --content-3: #5d6773;
+    --primary: #a3e31c;
+    --primary-dim: rgba(163, 227, 28, .12);
+    --primary-glow: rgba(163, 227, 28, .22);
+    --error-bg: #2a1618; --error-border: #e5484d; --error-text: #ff9aa0;
+    --radius: 12px;
+    --font-ui: 'Open Sans', system-ui, sans-serif;
+    --font-mono: 'Fira Code', monospace;
   }
   [data-theme="light"] {
-    --bg: #f7f9fc; --bg2: #ffffff; --bg3: #eef1f7; --border: #dde3ee;
-    --text: #161c28; --muted: #5c6a82; --faint: #8a97ad;
-    --mint: #0ea87c; --mint-dim: rgba(14, 168, 124, .1); --mint-glow: rgba(14, 168, 124, .2);
-    --err-bg: #fdecec; --err-border: #d92d20; --err-text: #b42318;
+    --background: #f5f7f2;
+    --base-secondary: #ffffff;
+    --base-tertiary: #eef1ea;
+    --border: #d9e0d4;
+    --content: #1b2027;
+    --content-2: #5a6673;
+    --content-3: #8a95a2;
+    --primary: #6fab06;
+    --primary-dim: rgba(111, 171, 6, .1);
+    --primary-glow: rgba(111, 171, 6, .18);
+    --error-bg: #fdecec; --error-border: #d92d20; --error-text: #b42318;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
-  body {
-    font-family: var(--font-body); background: var(--bg); color: var(--text);
-    display: flex; overflow: hidden;
-  }
-  body::before {
-    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-    background:
-      radial-gradient(600px 400px at 85% -5%, var(--mint-dim), transparent 60%),
-      radial-gradient(500px 380px at -10% 100%, rgba(139, 124, 246, .07), transparent 60%);
-  }
-  ::selection { background: var(--mint); color: #0a0e14; }
+  body { font-family: var(--font-ui); background: var(--background); color: var(--content); display: flex; overflow: hidden; }
 
   /* ---------- sidebar ---------- */
-  #sidebar { width: 272px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; transition: margin-left .25s cubic-bezier(.4,0,.2,1); position: relative; z-index: 5; }
-  #sidebar.hidden { margin-left: -272px; }
+  #sidebar { width: 260px; background: var(--base-secondary); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; transition: margin-left .25s cubic-bezier(.4,0,.2,1); position: relative; z-index: 5; }
+  #sidebar.hidden { margin-left: -260px; }
   .sb-head { padding: 18px 18px 14px; display: flex; align-items: center; gap: 10px; }
   .logo-mark {
-    width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(135deg, var(--mint), #2bb8a0); color: #0a0e14; font-size: 17px; font-weight: 700;
-    box-shadow: 0 0 18px var(--mint-glow);
+    width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+    background: var(--primary); color: #0d0f12; font-size: 17px; font-weight: 700;
   }
-  .sb-head .name { font-family: var(--font-display); font-weight: 700; font-size: 17px; letter-spacing: .3px; }
-  .sb-head .tag { font-size: 10.5px; color: var(--faint); letter-spacing: 1.5px; text-transform: uppercase; }
+  .sb-head .name { font-weight: 700; font-size: 16px; letter-spacing: .2px; }
+  .sb-head .tag { font-size: 10px; color: var(--content-3); letter-spacing: 1.4px; text-transform: uppercase; }
   .sb-new {
-    margin: 4px 16px 12px; background: linear-gradient(135deg, var(--mint), #2bb8a0); color: #0a0e14;
-    border: none; border-radius: 10px; padding: 11px; font-size: 13.5px; cursor: pointer; font-weight: 600;
-    font-family: var(--font-body); transition: transform .12s, box-shadow .12s;
+    margin: 4px 16px 12px; background: var(--primary); color: #0d0f12;
+    border: none; border-radius: 8px; padding: 10.5px; font-size: 13px; cursor: pointer; font-weight: 600;
+    font-family: var(--font-ui); transition: filter .12s, transform .12s;
   }
-  .sb-new:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--mint-glow); }
-  .sb-label { padding: 4px 20px 8px; font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--faint); }
+  .sb-new:hover { filter: brightness(1.08); }
+  .sb-label { padding: 4px 20px 8px; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--content-3); }
   #convo-list { flex: 1; overflow-y: auto; padding: 0 10px; }
-  .convo { padding: 9px 12px; border-radius: 9px; font-size: 13px; color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 8px; margin-bottom: 2px; transition: background .12s, color .12s; }
-  .convo:hover { background: var(--bg3); color: var(--text); }
-  .convo.active { background: var(--mint-dim); color: var(--text); border-left: 2px solid var(--mint); }
+  .convo { padding: 8px 12px; border-radius: 7px; font-size: 13px; color: var(--content-2); cursor: pointer; display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+  .convo:hover { background: var(--base-tertiary); color: var(--content); }
+  .convo.active { background: var(--primary-dim); color: var(--content); }
   .convo .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .convo .d { background: none; border: none; color: var(--err-border); cursor: pointer; visibility: hidden; font-size: 12px; }
+  .convo .d { background: none; border: none; color: var(--error-border); cursor: pointer; visibility: hidden; font-size: 12px; }
   .convo:hover .d { visibility: visible; }
-  .sb-foot { padding: 12px 18px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--faint); }
-  .sb-foot a { color: var(--mint); text-decoration: none; }
+  .sb-foot { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 4px; align-items: center; }
+  .sb-foot .icon-btn { font-size: 15px; }
 
   /* ---------- main ---------- */
-  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; z-index: 1; }
-  #topbar { display: flex; align-items: center; gap: 8px; padding: 12px 20px; }
-  .icon-btn { background: none; border: 1px solid transparent; color: var(--muted); font-size: 16px; cursor: pointer; padding: 7px 9px; border-radius: 9px; transition: all .12s; }
-  .icon-btn:hover { background: var(--bg3); color: var(--text); border-color: var(--border); }
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #topbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .icon-btn { background: none; border: 1px solid transparent; color: var(--content-2); font-size: 15px; cursor: pointer; padding: 6px 8px; border-radius: 8px; transition: all .12s; font-family: var(--font-ui); }
+  .icon-btn:hover { background: var(--base-tertiary); color: var(--content); }
   .spacer { flex: 1; }
-  select.model {
-    background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-radius: 10px;
-    padding: 8px 12px; font-size: 12.5px; max-width: 260px; cursor: pointer; font-family: var(--font-mono);
-  }
-  select.model:focus { outline: none; border-color: var(--mint); }
-  #user-chip { font-size: 12px; color: var(--mint); background: var(--mint-dim); border: 1px solid var(--mint-glow); border-radius: 20px; padding: 6px 13px; display: none; font-weight: 500; }
+  #user-chip { font-size: 12px; color: var(--primary); background: var(--primary-dim); border-radius: 20px; padding: 5px 12px; display: none; font-weight: 600; }
 
   /* ---------- home ---------- */
   #home { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; }
-  #home > * { animation: rise .5s cubic-bezier(.2,.7,.3,1) backwards; }
-  #home > *:nth-child(2) { animation-delay: .08s; }
-  #home > *:nth-child(3) { animation-delay: .16s; }
-  #home > *:nth-child(4) { animation-delay: .24s; }
-  @keyframes rise { from { opacity: 0; transform: translateY(18px); } }
-  .hero-badge {
-    font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--mint);
-    background: var(--mint-dim); border: 1px solid var(--mint-glow); border-radius: 20px; padding: 6px 16px; margin-bottom: 26px;
-  }
-  #home h2 { font-family: var(--font-display); font-size: clamp(30px, 5vw, 44px); font-weight: 700; margin-bottom: 14px; text-align: center; letter-spacing: -.5px; }
-  #home h2 .grad { background: linear-gradient(120deg, var(--mint), #6ee7ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  #home p.sub { color: var(--muted); font-size: 15px; margin-bottom: 38px; text-align: center; max-width: 540px; line-height: 1.7; }
-  #suggests { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; max-width: 720px; width: 100%; }
+  .home-hands { font-size: 46px; margin-bottom: 18px; }
+  #home h2 { font-size: clamp(26px, 4.5vw, 36px); font-weight: 600; margin-bottom: 12px; text-align: center; letter-spacing: -.4px; }
+  #home p.sub { color: var(--content-2); font-size: 14.5px; margin-bottom: 32px; text-align: center; max-width: 520px; line-height: 1.65; }
+  #suggests { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; max-width: 640px; width: 100%; }
   .sugg {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px;
-    font-size: 13.5px; color: var(--text); cursor: pointer; text-align: left; font-family: var(--font-body);
-    transition: transform .15s, border-color .15s, box-shadow .15s; line-height: 1.5;
+    background: var(--base-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 13px 15px;
+    font-size: 13px; color: var(--content-2); cursor: pointer; text-align: left; font-family: var(--font-ui);
+    transition: border-color .15s, color .15s; line-height: 1.5;
   }
-  .sugg:hover { transform: translateY(-3px); border-color: var(--mint); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
-  .sugg .ico { font-size: 19px; display: block; margin-bottom: 8px; }
+  .sugg:hover { border-color: var(--primary); color: var(--content); }
 
   /* ---------- chat ---------- */
   #chat-wrap { flex: 1; overflow-y: auto; display: none; }
-  #chat { max-width: 800px; margin: 0 auto; padding: 28px 24px 12px; display: flex; flex-direction: column; gap: 22px; }
-  .msg { display: flex; gap: 13px; line-height: 1.7; font-size: 14.5px; word-break: break-word; animation: rise .3s backwards; }
-  .msg .avatar { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; font-weight: 600; }
-  .msg.user .avatar { background: linear-gradient(135deg, var(--violet), #6c5ce7); color: #fff; }
-  .msg.ai .avatar { background: var(--bg3); border: 1px solid var(--border); }
-  .msg .body { flex: 1; min-width: 0; padding-top: 4px; }
-  .msg.user .body { color: var(--text); white-space: pre-wrap; }
-  .msg.error .body { color: var(--err-text); background: var(--err-bg); border: 1px solid var(--err-border); border-radius: 10px; padding: 11px 14px; }
-  .msg.ai pre { background: #0a0f16; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; overflow-x: auto; margin: 10px 0; font-size: 12.5px; position: relative; }
-  [data-theme="light"] .msg.ai pre { background: #0d1420; color: #d5e0f0; }
-  .msg.ai code { font-family: var(--font-mono); font-size: 12.5px; color: var(--mint); }
-  .msg.ai pre code { color: #a8d8c9; }
+  #chat { max-width: 780px; margin: 0 auto; padding: 24px 24px 12px; display: flex; flex-direction: column; gap: 20px; }
+  .msg { display: flex; gap: 12px; line-height: 1.65; font-size: 14.5px; word-break: break-word; }
+  .msg .avatar { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; font-weight: 700; }
+  .msg.user .avatar { background: var(--base-tertiary); border: 1px solid var(--border); color: var(--content); }
+  .msg.ai .avatar { background: var(--primary); color: #0d0f12; }
+  .msg.error .avatar { background: var(--error-bg); border: 1px solid var(--error-border); color: var(--error-text); }
+  .msg .body { flex: 1; min-width: 0; padding-top: 3px; }
+  .msg.user .body { white-space: pre-wrap; background: var(--base-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 11px 14px; }
+  .msg.error .body { color: var(--error-text); background: var(--error-bg); border: 1px solid var(--error-border); border-radius: var(--radius); padding: 11px 14px; }
+  .msg.ai pre { background: #0d0f12; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; overflow-x: auto; margin: 10px 0; font-size: 12.5px; position: relative; }
+  [data-theme="light"] .msg.ai pre { background: #10141a; color: #d5e0f0; }
+  .msg.ai code { font-family: var(--font-mono); font-size: 12.5px; color: var(--primary); }
+  .msg.ai pre code { color: #b8cc8f; }
   .msg.ai p { margin: 6px 0; }
   .msg.ai ul, .msg.ai ol { margin: 6px 0 6px 22px; }
-  .msg.ai img { max-width: 100%; border-radius: 12px; margin-top: 12px; border: 1px solid var(--border); }
-  .msg.ai h1, .msg.ai h2, .msg.ai h3 { font-family: var(--font-display); margin: 12px 0 6px; }
-  .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--bg3); border: 1px solid var(--border); color: var(--muted); border-radius: 7px; padding: 3px 9px; font-size: 11px; cursor: pointer; opacity: 0; transition: opacity .15s; font-family: var(--font-body); }
+  .msg.ai img { max-width: 100%; border-radius: 10px; margin-top: 12px; border: 1px solid var(--border); }
+  .msg.ai h1, .msg.ai h2, .msg.ai h3 { font-weight: 600; margin: 12px 0 6px; }
+  .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--base-tertiary); border: 1px solid var(--border); color: var(--content-2); border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; opacity: 0; transition: opacity .15s; font-family: var(--font-ui); }
   pre:hover .copy-btn { opacity: 1; }
-  .cursor { display: inline-block; width: 8px; height: 16px; background: var(--mint); vertical-align: text-bottom; animation: blink 1s steps(2) infinite; border-radius: 2px; }
+  .cursor { display: inline-block; width: 7px; height: 15px; background: var(--primary); vertical-align: text-bottom; animation: blink 1s steps(2) infinite; border-radius: 2px; }
   @keyframes blink { 50% { opacity: 0; } }
-  #typing { display: none; max-width: 800px; margin: 0 auto; padding: 0 24px 8px; color: var(--mint); font-size: 13px; }
+  #typing { display: none; max-width: 780px; margin: 0 auto; padding: 0 24px 8px; color: var(--primary); font-size: 12.5px; font-weight: 600; }
   #typing .dot { animation: blink 1.2s infinite; }
 
   /* ---------- composer ---------- */
-  #composer-wrap { padding: 14px 24px 20px; }
+  #composer-wrap { padding: 12px 24px 18px; }
   #composer {
-    max-width: 800px; margin: 0 auto; background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 18px; padding: 12px 14px 8px; transition: border-color .15s, box-shadow .15s;
+    max-width: 780px; margin: 0 auto; background: var(--base-secondary); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px 8px; transition: border-color .15s;
   }
-  #composer:focus-within { border-color: var(--mint); box-shadow: 0 0 0 3px var(--mint-dim), 0 8px 30px rgba(0,0,0,.3); }
-  #input { width: 100%; background: none; border: none; outline: none; color: var(--text); font-size: 14.5px; resize: none; font-family: var(--font-body); max-height: 160px; padding: 4px 6px; line-height: 1.6; }
-  #input::placeholder { color: var(--faint); }
+  #composer:focus-within { border-color: var(--primary); }
+  #input { width: 100%; background: none; border: none; outline: none; color: var(--content); font-size: 14.5px; resize: none; font-family: var(--font-ui); max-height: 160px; padding: 4px 6px; line-height: 1.6; }
+  #input::placeholder { color: var(--content-3); }
   #composer .row { display: flex; align-items: center; gap: 10px; padding: 6px 2px 2px; }
-  .mini-toggle { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; cursor: pointer; }
-  .mini-toggle input { accent-color: var(--mint); }
-  .hint-text { font-size: 11px; color: var(--faint); font-family: var(--font-mono); }
-  #send-btn {
-    margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: none;
-    background: linear-gradient(135deg, var(--mint), #2bb8a0); color: #0a0e14; font-size: 16px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; transition: transform .12s, box-shadow .12s;
+  select.model {
+    background: none; border: 1px solid transparent; color: var(--content-2); border-radius: 6px;
+    padding: 5px 8px; font-size: 12px; max-width: 220px; cursor: pointer; font-family: var(--font-mono);
   }
-  #send-btn:hover { transform: scale(1.08); box-shadow: 0 0 16px var(--mint-glow); }
-  #send-btn:disabled { background: var(--bg3); color: var(--faint); cursor: default; transform: none; box-shadow: none; }
+  select.model:hover { background: var(--base-tertiary); }
+  select.model:focus { outline: none; border-color: var(--primary); }
+  select.model option { background: var(--base-secondary); color: var(--content); }
+  .mini-toggle { display: flex; align-items: center; gap: 6px; color: var(--content-2); font-size: 12px; cursor: pointer; }
+  .mini-toggle input { accent-color: var(--primary); }
+  .hint-text { font-size: 11px; color: var(--content-3); }
+  #send-btn {
+    margin-left: auto; width: 34px; height: 34px; border-radius: 8px; border: none;
+    background: var(--primary); color: #0d0f12; font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: filter .12s;
+  }
+  #send-btn:hover { filter: brightness(1.1); }
+  #send-btn:disabled { background: var(--base-tertiary); color: var(--content-3); cursor: default; filter: none; }
 
   /* scrollbars */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--faint); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--content-3); }
 
   /* ---------- responsive ---------- */
   #backdrop {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55);
-    z-index: 15; opacity: 0; transition: opacity .25s;
-    -webkit-tap-highlight-color: transparent;
+    z-index: 15; opacity: 0; transition: opacity .25s; -webkit-tap-highlight-color: transparent;
   }
   #backdrop.show { opacity: 1; }
-
-  @media (max-width: 900px) {
-    select.model { max-width: 170px; font-size: 12px; }
-    #chat, #typing, #composer { padding-left: 16px; padding-right: 16px; }
-  }
 
   @media (max-width: 720px) {
     #sidebar {
       position: fixed; top: 0; left: 0; bottom: 0; z-index: 20; height: 100dvh;
       box-shadow: 4px 0 24px rgba(0,0,0,.5);
-      width: min(300px, 84vw);
+      width: min(280px, 82vw);
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
     }
-    #sidebar.hidden { margin-left: calc(-1 * min(300px, 84vw) - 10px); }
-    #topbar { padding: 10px 12px; gap: 6px; padding-top: calc(10px + env(safe-area-inset-top)); }
-    select.model { max-width: 150px; font-size: 11.5px; padding: 7px 8px; }
-    #home { padding: 16px; }
-    #home h2 { font-size: 27px; }
-    #home p.sub { font-size: 13.5px; margin-bottom: 26px; }
-    #suggests { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .sugg { padding: 12px 13px; font-size: 12px; border-radius: 12px; }
-    .sugg .ico { font-size: 16px; margin-bottom: 5px; }
-    .msg .avatar { width: 27px; height: 27px; font-size: 13px; }
-    .msg { gap: 10px; font-size: 14px; }
-    #chat { padding: 18px 12px 8px; gap: 16px; }
+    #sidebar.hidden { margin-left: calc(-1 * min(280px, 82vw) - 10px); }
+    #topbar { padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
+    #chat { padding: 18px 14px 8px; }
     #composer-wrap { padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); }
-    #composer { border-radius: 14px; }
-    #input { font-size: 16px; }
+    #input { font-size: 16px; } /* mencegah auto-zoom di iOS */
     .hint-text { display: none; }
-    .hero-badge { font-size: 10px; padding: 5px 12px; margin-bottom: 18px; }
-  }
-
-  @media (max-width: 380px) {
-    #suggests { grid-template-columns: 1fr; }
-    select.model { max-width: 118px; }
-    #home h2 { font-size: 24px; }
+    select.model { max-width: 140px; font-size: 11px; }
+    .home-hands { font-size: 38px; }
   }
 
   @media (min-width: 1400px) {
-    #chat, #typing { max-width: 900px; }
-    #composer { max-width: 900px; }
-    #suggests { max-width: 860px; }
+    #chat, #typing { max-width: 880px; }
+    #composer { max-width: 880px; }
+    #suggests { max-width: 760px; }
   }
 </style>
 </head>
@@ -221,41 +195,43 @@
       <div class="tag">AI Engineer</div>
     </div>
   </div>
-  <button class="sb-new" onclick="newChat()">✦ Percakapan Baru</button>
-  <div class="sb-label">Riwayat</div>
+  <button class="sb-new" onclick="newChat()">+ New Thread</button>
+  <div class="sb-label">Conversations</div>
   <div id="convo-list"></div>
-  <div class="sb-foot">Powered by <a href="https://puter.com" target="_blank">Puter</a> · <a href="https://github.com/antono4/MiniDevin" target="_blank">Source</a></div>
+  <div class="sb-foot">
+    <button class="icon-btn" id="auth-btn" onclick="toggleAuth()" title="Masuk / Keluar dengan Puter">👤</button>
+    <button class="icon-btn" onclick="toggleTheme()" title="Tema">◐</button>
+    <span class="spacer"></span>
+    <span id="user-chip"></span>
+  </div>
 </aside>
 
 <div id="main">
   <div id="topbar">
     <button class="icon-btn" onclick="toggleSidebar()" title="Sidebar">☰</button>
-    <select class="model" id="model-select" title="Model AI"></select>
-    <span class="spacer"></span>
-    <span id="user-chip"></span>
-    <button class="icon-btn" id="auth-btn" onclick="toggleAuth()" title="Masuk / Keluar">👤</button>
-    <button class="icon-btn" onclick="toggleTheme()" title="Tema">◐</button>
+    <span id="topbar-title" style="font-size:14px;font-weight:600;color:var(--content-2)">New conversation</span>
   </div>
 
   <div id="home">
-    <div class="hero-badge">⚡ 500+ model · tanpa API key</div>
-    <h2>Code Less, <span class="grad">Make More.</span></h2>
-    <p class="sub"><b>MiniDevin</b> — AI software engineer bertenaga Puter.js. GPT, Claude, Gemini, DeepSeek, dan ratusan model lain langsung dari browser Anda, tanpa backend dan tanpa API key. Login sekali dengan akun Puter, atau buat gambar dengan perintah <b>/gambar</b>.</p>
+    <div class="home-hands">🐚</div>
+    <h2>Let's get started</h2>
+    <p class="sub">MiniDevin adalah AI software engineer bertenaga Puter.js — 500+ model langsung dari browser Anda, tanpa backend dan tanpa API key. Login sekali dengan akun Puter untuk menyimpan riwayat.</p>
     <div id="suggests">
-      <button class="sugg" onclick="useSugg(this)"><span class="ico">💻</span>Buatkan REST API FastAPI sederhana dengan CRUD dan unit test</button>
-      <button class="sugg" onclick="useSugg(this)"><span class="ico">🐛</span>Jelaskan kenapa kode Python ini error dan berikan perbaikannya: [tempel kode]</button>
-      <button class="sugg" onclick="useSugg(this)"><span class="ico">🌐</span>Buatkan landing page HTML + CSS responsif untuk aplikasi todo</button>
-      <button class="sugg" onclick="useSugg(this)"><span class="ico">🎨</span>/gambar ilustrasi robot programmer di terminal, gaya sinematik</button>
+      <button class="sugg" onclick="useSugg(this)">Buatkan REST API FastAPI sederhana dengan CRUD dan unit test</button>
+      <button class="sugg" onclick="useSugg(this)">Debug kode Python ini dan jelaskan penyebab errornya: [tempel kode]</button>
+      <button class="sugg" onclick="useSugg(this)">Buatkan landing page HTML + CSS responsif untuk aplikasi todo</button>
+      <button class="sugg" onclick="useSugg(this)">/gambar ilustrasi robot programmer di terminal, gaya sinematik</button>
     </div>
   </div>
 
   <div id="chat-wrap"><div id="chat"></div></div>
-  <div id="typing">🐚 MiniDevin sedang bekerja <span class="dot">●</span><span class="dot" style="animation-delay:.2s">●</span><span class="dot" style="animation-delay:.4s">●</span></div>
+  <div id="typing">MiniDevin is working <span class="dot">●</span><span class="dot" style="animation-delay:.2s">●</span><span class="dot" style="animation-delay:.4s">●</span></div>
 
   <div id="composer-wrap">
     <div id="composer">
-      <textarea id="input" rows="1" placeholder="Ketik tugas untuk MiniDevin…"></textarea>
+      <textarea id="input" rows="1" placeholder="What do you want to build?"></textarea>
       <div class="row">
+        <select class="model" id="model-select" title="Model AI"></select>
         <label class="mini-toggle"><input type="checkbox" id="stream-mode" checked> ⚡ Stream</label>
         <span class="hint-text">Enter ↵ kirim · Shift+Enter baris baru</span>
         <button id="send-btn" onclick="send()" title="Kirim">➤</button>
@@ -274,6 +250,7 @@ const sendBtn = document.getElementById('send-btn');
 const modelSelect = document.getElementById('model-select');
 const streamMode = document.getElementById('stream-mode');
 const convoList = document.getElementById('convo-list');
+const topbarTitle = document.getElementById('topbar-title');
 
 const FALLBACK_MODELS = ['gpt-5-nano', 'gpt-4o-mini', 'claude-sonnet-4', 'gemini-2.5-flash', 'deepseek-chat', 'grok-4'];
 const SYSTEM_PROMPT = 'Anda adalah MiniDevin, AI software engineer. Bantu pengguna menulis, menjelaskan, dan memperbaiki kode. Jawab ringkas dalam Bahasa Indonesia kecuali diminta lain. Kode selalu dalam blok markdown dengan bahasa yang jelas.';
@@ -296,7 +273,7 @@ function addMsg(role, text, isMd) {
   d.className = 'msg ' + role;
   const av = document.createElement('div');
   av.className = 'avatar';
-  av.textContent = role === 'user' ? 'A' : role === 'error' ? '⚠' : '🐚';
+  av.textContent = role === 'user' ? '👤' : role === 'error' ? '⚠' : '🐚';
   const body = document.createElement('div');
   body.className = 'body';
   if (isMd) { body.innerHTML = md(text); addCopyButtons(body); } else body.textContent = text;
@@ -308,16 +285,16 @@ function addMsg(role, text, isMd) {
 document.addEventListener('click', (e) => {
   if (e.target.classList && e.target.classList.contains('copy-btn')) {
     const pre = e.target.closest('pre');
-    if (pre) navigator.clipboard.writeText(pre.textContent.replace(/^📋 Salin/, '').trim());
+    if (pre) navigator.clipboard.writeText(pre.textContent.replace(/^📋 Copy/, '').trim());
     e.target.textContent = '✓';
-    setTimeout(() => e.target.textContent = '📋 Salin', 1200);
+    setTimeout(() => e.target.textContent = '📋 Copy', 1200);
   }
 });
 function addCopyButtons(root) {
   root.querySelectorAll('pre').forEach(pre => {
     if (pre.querySelector('.copy-btn')) return;
     const b = document.createElement('button');
-    b.className = 'copy-btn'; b.textContent = '📋 Salin';
+    b.className = 'copy-btn'; b.textContent = '📋 Copy';
     pre.appendChild(b);
   });
 }
@@ -330,6 +307,7 @@ function setBusy(v) {
 function showHome(show) {
   home.style.display = show ? 'flex' : 'none';
   chatWrap.style.display = show ? 'none' : 'block';
+  if (show) topbarTitle.textContent = 'New conversation';
 }
 
 const sidebarEl = document.getElementById('sidebar');
@@ -374,8 +352,12 @@ async function loadModels() {
   });
   const saved = localStorage.getItem('minidevin_model');
   modelSelect.value = saved && models.includes(saved) ? saved : models[0];
+  modelSelect.title = 'Model: ' + modelSelect.value;
 }
-modelSelect.onchange = () => localStorage.setItem('minidevin_model', modelSelect.value);
+modelSelect.onchange = () => {
+  localStorage.setItem('minidevin_model', modelSelect.value);
+  modelSelect.title = 'Model: ' + modelSelect.value;
+};
 
 async function refreshAuth() {
   try {
@@ -385,9 +367,11 @@ async function refreshAuth() {
       chip.style.display = '';
       chip.textContent = '👤 ' + u.username;
       document.getElementById('auth-btn').textContent = '🚪';
+      document.getElementById('auth-btn').title = 'Keluar (' + u.username + ')';
     } else {
       document.getElementById('user-chip').style.display = 'none';
       document.getElementById('auth-btn').textContent = '👤';
+      document.getElementById('auth-btn').title = 'Masuk dengan Puter';
     }
   } catch (e) {}
 }
@@ -443,6 +427,7 @@ function renderConvoList() {
 }
 function openChat(id) {
   currentId = id;
+  topbarTitle.textContent = conversations[id].title || 'Percakapan';
   chatEl.innerHTML = '';
   (conversations[id].messages || []).forEach(m => addMsg(m.role, m.content, m.role !== 'user'));
   showHome(false);
@@ -462,13 +447,13 @@ function useSugg(el) {
 
 async function generateImage(prompt) {
   setBusy(true);
-  typing.textContent = '🎨 Membuat gambar…';
+  typing.textContent = '🎨 Generating image…';
   try {
     const img = await puter.ai.txt2img(prompt);
     const body = addMsg('ai', '');
     body.innerHTML = '<div>🎨 <b></b></div>';
     body.querySelector('b').textContent = prompt;
-    img.style.maxWidth = '100%'; img.style.borderRadius = '12px'; img.style.marginTop = '12px';
+    img.style.maxWidth = '100%'; img.style.borderRadius = '10px'; img.style.marginTop = '12px';
     body.appendChild(img);
     scrollChat();
     conversations[currentId].messages.push({ role: 'assistant', content: `🎨 Gambar dibuat: ${prompt}` });
@@ -476,7 +461,7 @@ async function generateImage(prompt) {
     addMsg('error', '⚠️ Gagal membuat gambar: ' + (e.message || e));
   }
   setBusy(false);
-  typing.textContent = '🐚 MiniDevin sedang bekerja';
+  typing.textContent = 'MiniDevin is working';
 }
 
 async function send() {
@@ -488,6 +473,7 @@ async function send() {
   if (!currentId) {
     currentId = uid();
     conversations[currentId] = { title: text.slice(0, 50), messages: [] };
+    topbarTitle.textContent = text.slice(0, 50);
   }
   showHome(false);
   addMsg('user', text);
