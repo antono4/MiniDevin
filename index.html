@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0d0f12">
 <title>MiniDevin</title>
-<link rel="icon" href="minidevin.png">
+<link rel="icon" type="image/png" href="favicon.png">
 <script src="https://js.puter.com/v2/"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
@@ -50,7 +50,7 @@
   #sidebar { width: 260px; background: var(--base-secondary); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; transition: margin-left .25s cubic-bezier(.4,0,.2,1); position: relative; z-index: 5; }
   #sidebar.hidden { margin-left: -260px; }
   .sb-head { padding: 18px 18px 14px; display: flex; align-items: center; gap: 10px; }
-  .logo-mark { width: 34px; height: 34px; border-radius: 9px; overflow: hidden; }
+  .logo-mark { width: 34px; height: 34px; border-radius: 9px; overflow: hidden; box-shadow: 0 0 12px var(--primary-glow); }
   .logo-mark img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .sb-head .name { font-weight: 700; font-size: 16px; letter-spacing: .2px; }
   .sb-head .tag { font-size: 10px; color: var(--content-3); letter-spacing: 1.4px; text-transform: uppercase; }
@@ -81,7 +81,7 @@
 
   /* ---------- home ---------- */
   #home { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; }
-  .home-logo { width: 88px; height: 88px; border-radius: 20px; overflow: hidden; margin-bottom: 20px; border: 1px solid var(--border); }
+  .home-logo { width: 88px; height: 88px; border-radius: 20px; overflow: hidden; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 8px 32px rgba(0,0,0,.35); }
   .home-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
   #home h2 { font-size: clamp(26px, 4.5vw, 36px); font-weight: 600; margin-bottom: 12px; text-align: center; letter-spacing: -.4px; }
   #home p.sub { color: var(--content-2); font-size: 14.5px; margin-bottom: 32px; text-align: center; max-width: 520px; line-height: 1.65; }
