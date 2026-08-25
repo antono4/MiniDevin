@@ -23,6 +23,13 @@
 - 🧠 System prompt bawaan: MiniDevin bertindak sebagai asisten software engineer
 - 💾 Tanpa server — satu file HTML statis; model User-Pays Puter (pengguna memakai kuota akun Puter mereka)
 
+### 🚀 Baru di v2.0
+
+- **Perintah slash cerdas** — ketik `/` untuk membuka popup perintah (navigasi ↑/↓ + Enter): `/gambar` · `/kode` · `/jelaskan` · `/terjemahkan` · `/rangkum` · `/ulas` · `/berkas`
+- **Lampiran gambar 📎** — unggah screenshot atau diagram (maks 5 MB) untuk dianalisis AI, dengan preview dan tombol hapus
+- **Salin jawaban utuh ⧉** — tombol "Salin" muncul saat hover di setiap respons AI
+- **Ikon SVG bergaya Feather** untuk auth (login/logout) dan tema (matahari/bulan)
+
 ## 🚀 Menjalankan Frontend
 
 Lewat HTTP (Puter.js menolak `file://`):

@@ -157,6 +157,31 @@
   #send-btn:hover { filter: brightness(1.1); }
   #send-btn:disabled { background: var(--base-tertiary); color: var(--content-3); cursor: default; filter: none; }
   #send-btn.stop { background: var(--error-border); color: #fff; }
+  /* ---------- lampiran & slash (v2) ---------- */
+  #attach-prev { display: none; max-width: 780px; margin: 0 auto 8px; }
+  #attach-prev.show { display: flex; align-items: center; gap: 10px; background: var(--base-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+  #attach-prev img { max-height: 64px; border-radius: 8px; border: 1px solid var(--border); }
+  #attach-prev .meta { flex: 1; min-width: 0; font-size: 12px; color: var(--content-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #attach-prev .x { background: none; border: none; color: var(--content-3); cursor: pointer; font-size: 15px; padding: 4px 6px; border-radius: 6px; }
+  #attach-prev .x:hover { background: var(--error-bg); color: var(--error-border); }
+  #attach-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: none; color: var(--content-2); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .12s; }
+  #attach-btn:hover { background: var(--base-tertiary); color: var(--content); }
+  .msg.ai .body { position: relative; }
+  .msg .tools { position: absolute; top: -13px; right: 0; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+  .msg.ai:hover .tools { opacity: 1; }
+  .tools .tbtn { background: var(--base-tertiary); border: 1px solid var(--border); color: var(--content-2); border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; font-family: var(--font-ui); }
+  .tools .tbtn:hover { color: var(--content); border-color: var(--primary); }
+  #slash-pop {
+    position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); width: min(400px, 92vw);
+    background: var(--base-secondary); border: 1px solid var(--border); border-radius: 12px; z-index: 30;
+    box-shadow: 0 12px 40px rgba(0,0,0,.45); overflow: hidden; display: none;
+  }
+  #slash-pop.show { display: block; }
+  .slash-item { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; color: var(--content); padding: 11px 14px; font-size: 13px; cursor: pointer; text-align: left; font-family: var(--font-ui); }
+  .slash-item:hover, .slash-item.sel { background: var(--primary-dim); }
+  .slash-item .ic { width: 24px; text-align: center; }
+  .slash-item .cmd { font-family: var(--font-mono); color: var(--primary); font-size: 12px; min-width: 90px; }
+  .slash-item .desc { flex: 1; color: var(--content-2); font-size: 12px; }
 
   /* scrollbars */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -242,9 +267,16 @@
   <div id="typing">MiniDevin is working <span class="dot">●</span><span class="dot" style="animation-delay:.2s">●</span><span class="dot" style="animation-delay:.4s">●</span></div>
 
   <div id="composer-wrap">
+    <div id="attach-prev">
+      <img id="attach-img" alt="Lampiran">
+      <span class="meta" id="attach-meta"></span>
+      <button class="x" onclick="clearAttach()" title="Hapus lampiran">✕</button>
+    </div>
     <div id="composer">
       <textarea id="input" rows="1" placeholder="What do you want to build?"></textarea>
       <div class="row">
+        <input type="file" id="attach-input" accept="image/*" style="display:none">
+        <button id="attach-btn" onclick="document.getElementById('attach-input').click()" title="Lampirkan gambar">📎</button>
         <select class="model" id="model-select" title="Model AI"></select>
         <label class="mini-toggle"><input type="checkbox" id="stream-mode" checked> ⚡ Stream</label>
         <span class="hint-text">Enter ↵ kirim · Shift+Enter baris baru</span>
@@ -254,6 +286,7 @@
     </div>
   </div>
 </div>
+<div id="slash-pop"></div>
 
 <script>
 const chatEl = document.getElementById('chat');
@@ -269,6 +302,15 @@ const topbarTitle = document.getElementById('topbar-title');
 
 const FALLBACK_MODELS = ['gpt-5-nano', 'gpt-4o-mini', 'claude-sonnet-4', 'gemini-2.5-flash', 'deepseek-chat', 'grok-4'];
 const SYSTEM_PROMPT = 'Anda adalah MiniDevin. Jika pengguna bertanya siapa Anda atau siapa kamu, jawab bahwa Anda adalah MiniDevin — AI software engineer. Bantu pengguna menulis, menjelaskan, dan memperbaiki kode. Jawab ringkas dalam Bahasa Indonesia kecuali diminta lain. Kode selalu dalam blok markdown dengan bahasa yang jelas.';
+const COMMANDS = [
+  { cmd: '/gambar', icon: '🎨', desc: 'Buat gambar dari deskripsi teks' },
+  { cmd: '/kode', icon: '💻', desc: 'Minta bantuan menulis atau memperbaiki kode' },
+  { cmd: '/jelaskan', icon: '💡', desc: 'Penjelasan mendalam tentang sebuah konsep' },
+  { cmd: '/terjemahkan', icon: '🌐', desc: 'Terjemahkan teks ke bahasa lain' },
+  { cmd: '/rangkum', icon: '📝', desc: 'Ringkas teks panjang menjadi poin utama' },
+  { cmd: '/ulas', icon: '🔍', desc: 'Review kode: bug, performa, praktik terbaik' },
+  { cmd: '/berkas', icon: '📎', desc: 'Lampirkan gambar untuk dianalisis AI' }
+];
 let conversations = {};
 let currentId = null;
 let busy = false;
@@ -302,6 +344,19 @@ function addMsg(role, text, isMd) {
   const body = document.createElement('div');
   body.className = 'body';
   if (isMd) { body.innerHTML = md(text); addCopyButtons(body); } else body.textContent = text;
+  if (role === 'ai') {
+    const tools = document.createElement('div');
+    tools.className = 'tools';
+    const cp = document.createElement('button');
+    cp.className = 'tbtn'; cp.textContent = '⧉ Salin';
+    cp.onclick = () => {
+      navigator.clipboard.writeText(text);
+      cp.textContent = '✓ Disalin';
+      setTimeout(() => cp.textContent = '⧉ Salin', 1200);
+    };
+    tools.appendChild(cp);
+    body.appendChild(tools);
+  }
   d.appendChild(av); d.appendChild(body);
   chatEl.appendChild(d); scrollChat();
   return body;
@@ -562,6 +617,60 @@ function toggleMic() {
   } catch (e) {}
 }
 
+/* ---------- lampiran (v2) ---------- */
+const attachInput = document.getElementById('attach-input');
+const attachPrev = document.getElementById('attach-prev');
+const attachImg = document.getElementById('attach-img');
+const attachMeta = document.getElementById('attach-meta');
+let attachData = null; // { dataUrl, name, type }
+
+attachInput.addEventListener('change', () => {
+  const f = attachInput.files && attachInput.files[0];
+  if (!f) return;
+  if (f.size > 5 * 1024 * 1024) { alert('Ukuran gambar maksimal 5 MB.'); attachInput.value = ''; return; }
+  const rd = new FileReader();
+  rd.onload = () => {
+    attachData = { dataUrl: rd.result, name: f.name, type: f.type };
+    attachImg.src = rd.result;
+    attachMeta.textContent = f.name + ' (' + Math.round(f.size / 1024) + ' KB)';
+    attachPrev.classList.add('show');
+  };
+  rd.readAsDataURL(f);
+});
+function clearAttach() {
+  attachData = null;
+  attachInput.value = '';
+  attachPrev.classList.remove('show');
+}
+
+/* ---------- perintah slash (v2) ---------- */
+const slashPop = document.getElementById('slash-pop');
+let slashSel = 0;
+function renderSlash(filter) {
+  const items = COMMANDS.filter(c => c.cmd.startsWith(filter));
+  if (!items.length || !filter.startsWith('/')) { slashPop.classList.remove('show'); return false; }
+  slashPop.innerHTML = '';
+  items.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'slash-item' + (i === slashSel ? ' sel' : '');
+    b.innerHTML = '<span class="ic"></span><span class="cmd"></span><span class="desc"></span>';
+    b.querySelector('.ic').textContent = c.icon;
+    b.querySelector('.cmd').textContent = c.cmd;
+    b.querySelector('.desc').textContent = c.desc;
+    b.onmousedown = (e) => { e.preventDefault(); applyCommand(c); };
+    slashPop.appendChild(b);
+  });
+  slashPop.classList.add('show');
+  return true;
+}
+function applyCommand(c) {
+  if (c.cmd === '/berkas') { attachInput.click(); input.value = ''; }
+  else input.value = c.cmd + ' ';
+  input.focus();
+  input.dispatchEvent(new Event('input'));
+}
+function closeSlash() { slashPop.classList.remove('show'); slashSel = 0; }
+
 async function generateImage(prompt) {
   setBusy(true);
   typing.textContent = '🎨 Generating image…';
@@ -584,19 +693,24 @@ async function generateImage(prompt) {
 async function send() {
   if (busy) { abortRequested = true; return; }
   const text = input.value.trim();
-  if (!text) return;
+  if (!text && !attachData) return;
   input.value = '';
   input.style.height = 'auto';
+  closeSlash();
 
   if (!currentId) {
     currentId = uid();
-    conversations[currentId] = { title: text.slice(0, 50), messages: [] };
-    topbarTitle.textContent = text.slice(0, 50);
+    conversations[currentId] = { title: (text || attachData.name).slice(0, 50), messages: [] };
+    topbarTitle.textContent = (text || attachData.name).slice(0, 50);
   }
   showHome(false);
-  addMsg('user', text);
-  conversations[currentId].messages.push({ role: 'user', content: text });
+  addMsg('user', text + (attachData ? '\n📎 ' + attachData.name : ''));
+  const userMsg = { role: 'user', content: text || 'Analisis gambar ini.' };
+  if (attachData) userMsg.image = attachData.dataUrl;
+  conversations[currentId].messages.push(userMsg);
   renderConvoList();
+  const hadAttach = attachData;
+  clearAttach();
 
   if (text.startsWith('/gambar ')) {
     await generateImage(text.slice(8));
@@ -609,9 +723,11 @@ async function send() {
   const model = modelSelect.value;
   const history = conversations[currentId].messages.slice(-20).map(m => ({ role: m.role, content: m.content }));
   const messages = [{ role: 'system', content: SYSTEM_PROMPT }, ...history];
+  const opts = { model };
+  if (hadAttach) opts.image = hadAttach.dataUrl;
 
   try {
-    if (streamMode.checked) {
+    if (streamMode.checked && !hadAttach) {
       const body = addMsg('ai', '');
       let full = '';
       const resp = await puter.ai.chat(messages, { model, stream: true });
@@ -628,7 +744,7 @@ async function send() {
       addCopyButtons(body);
       conversations[currentId].messages.push({ role: 'assistant', content: full });
     } else {
-      const resp = await puter.ai.chat(messages, { model });
+      const resp = await puter.ai.chat(messages, opts);
       const content = resp?.message?.content ?? resp?.text ?? String(resp);
       let textOut = Array.isArray(content) ? content.map(c => c.text || '').join('') : content;
       if (abortRequested) textOut += '\n\n_⏹ Dihentikan pengguna._';
@@ -644,11 +760,21 @@ async function send() {
 }
 
 input.addEventListener('keydown', (e) => {
+  if (slashPop.classList.contains('show')) {
+    const items = slashPop.querySelectorAll('.slash-item');
+    if (e.key === 'ArrowDown') { e.preventDefault(); slashSel = (slashSel + 1) % items.length; renderSlash(input.value.trim()); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); slashSel = (slashSel - 1 + items.length) % items.length; renderSlash(input.value.trim()); return; }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); items[slashSel] && items[slashSel].dispatchEvent(new MouseEvent('mousedown')); return; }
+    if (e.key === 'Escape') { closeSlash(); return; }
+  }
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
 });
 input.addEventListener('input', () => {
   input.style.height = 'auto';
   input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+  const v = input.value.trim();
+  if (v.startsWith('/')) { slashSel = 0; renderSlash(v.split(' ')[0]); }
+  else closeSlash();
 });
 
 (async () => {
