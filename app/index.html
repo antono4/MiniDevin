@@ -44,7 +44,7 @@
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
-  body { font-family: var(--font-ui); background: var(--background); color: var(--content); display: flex; overflow: hidden; }
+  body { font-family: var(--font-ui); background: var(--background); color: var(--content); display: flex; overflow: hidden; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   body::before {
     content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
     background: radial-gradient(1200px 600px at 80% -10%, rgba(195,247,58,.05), transparent),
@@ -74,7 +74,7 @@
   .convo .d, .convo .r { background: none; border: none; color: var(--content-3); cursor: pointer; visibility: hidden; font-size: 12px; padding: 2px; transition: color .12s; }
   .convo .d { color: var(--error-border); }
   .convo:hover .d, .convo:hover .r { visibility: visible; }
-  .sb-foot { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 4px; align-items: center; }
+  .sb-foot { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 4px; align-items: center; background: linear-gradient(180deg, transparent, rgba(0,0,0,.18)); }
   .sb-foot .icon-btn { font-size: 15px; }
 
   /* ---------- main ---------- */
@@ -85,12 +85,15 @@
   .icon-btn:hover { background: var(--base-tertiary); color: var(--content); }
   .spacer { flex: 1; }
   #user-chip { font-size: 12px; color: var(--primary); background: var(--primary-dim); border-radius: 20px; padding: 5px 12px; display: none; font-weight: 600; }
+  #user-chip.show { display: inline-flex; align-items: center; gap: 6px; }
+  #user-chip svg { width: 13px; height: 13px; display: block; }
 
   /* ---------- home ---------- */
   #home { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; position: relative; }
   .orb { position: absolute; top: 50%; width: min(560px, 80vw); height: min(560px, 80vw); background: radial-gradient(circle, var(--primary-glow), transparent 58%); filter: blur(40px); animation: orb 14s ease-in-out infinite alternate; pointer-events: none; }
   @keyframes orb { from { transform: translateY(-70%) scale(.9) rotate(0deg); } to { transform: translateY(-50%) scale(1.1) rotate(360deg); } }
-  .home-logo { width: 96px; height: 96px; border-radius: 24px; overflow: hidden; margin-bottom: 22px; border: 1px solid var(--border); box-shadow: 0 10px 42px rgba(0,0,0,.4); position: relative; z-index: 1; animation: float 4.5s ease-in-out infinite; }
+  .home-logo { width: 96px; height: 96px; border-radius: 24px; overflow: hidden; margin-bottom: 22px; border: 1px solid var(--border); box-shadow: 0 10px 42px rgba(0,0,0,.4), 0 0 0 4px rgba(0,0,0,.15), 0 0 24px var(--primary-glow); position: relative; z-index: 1; animation: float 4.5s ease-in-out infinite; }
+  .home-logo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(255,255,255,.18), transparent 52%); pointer-events: none; border-radius: inherit; }
   @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
   .home-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
   #home h2 { font-size: clamp(30px, 5vw, 42px); font-weight: 700; margin-bottom: 14px; text-align: center; letter-spacing: -.6px; position: relative; z-index: 1; }
@@ -102,7 +105,9 @@
     font-size: 13px; color: var(--content-2); cursor: pointer; text-align: left; font-family: var(--font-ui);
     transition: border-color .2s, color .2s, transform .2s, box-shadow .2s; line-height: 1.55; position: relative;
   }
-  .sugg:hover { border-color: var(--primary); color: var(--content); transform: translateY(-3px); box-shadow: 0 8px 26px rgba(0,0,0,.35); }
+  .sugg::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(140deg, var(--primary) 0%, transparent 40%); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; transition: opacity .25s; }
+  .sugg:hover { border-color: transparent; color: var(--content); transform: translateY(-3px); box-shadow: 0 8px 26px rgba(0,0,0,.35); }
+  .sugg:hover::before { opacity: 1; }
 
   /* ---------- chat ---------- */
   #chat-wrap { flex: 1; overflow-y: auto; display: none; scroll-behavior: smooth; }
@@ -124,21 +129,31 @@
   .msg.ai ul, .msg.ai ol { margin: 6px 0 6px 22px; }
   .msg.ai img { max-width: 100%; border-radius: 12px; margin-top: 12px; border: 1px solid var(--border); }
   .msg.ai h1, .msg.ai h2, .msg.ai h3 { font-weight: 600; margin: 12px 0 6px; }
-  .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--base-tertiary); border: 1px solid var(--border); color: var(--content-2); border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; opacity: 0; transition: opacity .15s; font-family: var(--font-ui); }
-  pre:hover .copy-btn { opacity: 1; }
+  .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--base-tertiary); border: 1px solid var(--border); color: var(--content-2); border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; opacity: 0; transform: translateY(-2px); transition: opacity .15s, transform .15s; font-family: var(--font-ui); }
+  pre:hover .copy-btn { opacity: 1; transform: translateY(0); }
   .cursor { display: inline-block; width: 7px; height: 15px; background: var(--primary); vertical-align: text-bottom; animation: blink 1s steps(2) infinite; border-radius: 2px; }
   @keyframes blink { 50% { opacity: 0; } }
-  #typing { display: none; max-width: 790px; margin: 0 auto; padding: 0 26px 8px; color: var(--primary); font-size: 12.5px; font-weight: 600; }
+  #typing { display: none; max-width: 790px; margin: 0 auto; padding: 0 26px 8px; color: var(--primary); font-size: 12.5px; font-weight: 600; align-items: center; gap: 6px; }
+  #typing.show { display: inline-flex; }
   #typing .dot { animation: blink 1.2s infinite; }
+  .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--primary); border-top-color: transparent; border-radius: 50%; animation: rot .7s linear infinite; vertical-align: middle; }
+  @keyframes rot { to { transform: rotate(360deg); } }
 
   /* ---------- composer ---------- */
   #composer-wrap { padding: 12px 24px 18px; }
   #composer {
     max-width: 790px; margin: 0 auto; background: linear-gradient(180deg, var(--base-secondary), var(--base-tertiary));
-    border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px 8px; transition: border-color .2s, box-shadow .2s;
-    box-shadow: 0 4px 24px rgba(0,0,0,.35);
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px 8px; transition: border-color .2s, box-shadow .2s, transform .2s;
+    box-shadow: 0 4px 24px rgba(0,0,0,.35); position: relative;
   }
-  #composer:focus-within { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary), 0 8px 32px rgba(0,0,0,.4); }
+  #composer::before {
+    content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px;
+    background: linear-gradient(135deg, var(--primary), transparent 35%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  #composer:hover::before, #composer:focus-within::before { opacity: 1; }
+  #composer:focus-within { border-color: transparent; box-shadow: 0 0 0 1px var(--primary), 0 8px 32px rgba(0,0,0,.4); }
   #input { width: 100%; background: none; border: none; outline: none; color: var(--content); font-size: 14.5px; resize: none; font-family: var(--font-ui); max-height: 160px; padding: 4px 6px; line-height: 1.6; }
   #input::placeholder { color: var(--content-3); }
   #composer .row { display: flex; align-items: center; gap: 10px; padding: 6px 2px 2px; }
@@ -153,14 +168,17 @@
   .mini-toggle { display: flex; align-items: center; gap: 6px; color: var(--content-2); font-size: 12px; cursor: pointer; }
   .mini-toggle input { accent-color: var(--primary); }
   .hint-text { font-size: 11px; color: var(--content-3); }
-  #mic-btn {
-    width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--border);
-    background: none; color: var(--content-2); font-size: 15px; cursor: pointer;
-    display: none; align-items: center; justify-content: center; transition: background .12s, color .12s;
+  .svg-btn {
+    width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--border);
+    background: none; color: var(--content-2); cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .12s, color .12s, border-color .12s, transform .12s;
   }
-  #mic-btn:hover { background: var(--base-tertiary); color: var(--content); }
-  #mic-btn.recording { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); animation: micpulse 1.2s infinite; }
-  @keyframes micpulse { 50% { box-shadow: 0 0 0 5px rgba(229, 72, 77, .18); } }
+  .svg-btn svg { display: block; }
+  .svg-btn:hover { background: var(--base-tertiary); color: var(--content); border-color: var(--primary); transform: translateY(-1px); }
+  #mic-btn { display: none; }
+  #mic-btn.recording { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); animation: micpulse 1.4s ease-out infinite; }
+  @keyframes micpulse { 0% { box-shadow: 0 0 0 0 rgba(229,72,77,.35) } 100% { box-shadow: 0 0 0 12px rgba(229,72,77,0) } }
   #send-btn {
     margin-left: auto; width: 36px; height: 36px; border-radius: 9px; border: none;
     background: var(--primary); color: #0d0f12; font-size: 15px; cursor: pointer;
@@ -178,8 +196,11 @@
   #attach-prev .meta { flex: 1; min-width: 0; font-size: 12px; color: var(--content-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #attach-prev .x { background: none; border: none; color: var(--content-3); cursor: pointer; font-size: 15px; padding: 4px 6px; border-radius: 6px; }
   #attach-prev .x:hover { background: var(--error-bg); color: var(--error-border); }
-  #attach-btn { width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--border); background: none; color: var(--content-2); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .12s, color .12s; }
-  #attach-btn:hover { background: var(--base-tertiary); color: var(--content); }
+  #attach-prev .x svg { display: block; }
+  .attach-row { display: flex; align-items: center; gap: 9px; margin-top: 9px; padding: 8px 11px; background: var(--base-tertiary); border: 1px solid var(--border); border-radius: 10px; }
+  .attach-row .ic { color: var(--content-2); flex-shrink: 0; display: flex; }
+  .attach-row img { max-height: 40px; border-radius: 7px; border: 1px solid var(--border); }
+  .attach-row .nm { flex: 1; min-width: 0; font-size: 12px; color: var(--content-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .msg.ai .body { position: relative; }
   .msg .tools { position: absolute; top: -13px; right: 0; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
   .msg.ai:hover .tools { opacity: 1; }
@@ -193,7 +214,7 @@
   #slash-pop.show { display: block; }
   .slash-item { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; color: var(--content); padding: 11px 14px; font-size: 13px; cursor: pointer; text-align: left; font-family: var(--font-ui); transition: background .12s; }
   .slash-item:hover, .slash-item.sel { background: var(--primary-dim); }
-  .slash-item .ic { width: 24px; text-align: center; }
+  .slash-item .ic { width: 24px; display: flex; align-items: center; justify-content: center; color: var(--content-2); flex-shrink: 0; }
   .slash-item .cmd { font-family: var(--font-mono); color: var(--primary); font-size: 12px; min-width: 90px; }
   .slash-item .desc { flex: 1; color: var(--content-2); font-size: 12px; }
 
@@ -267,7 +288,7 @@
   <div id="topbar">
     <button class="icon-btn" onclick="toggleSidebar()" title="Sidebar">☰</button>
     <span id="topbar-title" style="font-size:14px;font-weight:600;color:var(--content-2)">New conversation</span>
-    <span id="model-chip" style="font-size:11px;color:var(--content-3);background:var(--base-tertiary);border-radius:12px;padding:3px 10px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <span id="model-chip" style="font-size:11px;color:var(--content-3);background:var(--base-tertiary);border-radius:12px;padding:3px 10px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex;align-items:center;gap:5px"></span>
     <span class="spacer"></span>
     <button class="icon-btn" id="export-btn" onclick="exportChat('md')" title="Ekspor chat sebagai Markdown" style="display:none">📥</button>
   </div>
@@ -292,18 +313,28 @@
     <div id="attach-prev">
       <img id="attach-img" alt="Lampiran">
       <span class="meta" id="attach-meta"></span>
-      <button class="x" onclick="clearAttach()" title="Hapus lampiran">✕</button>
+      <button class="x" onclick="clearAttach()" title="Hapus lampiran" aria-label="Hapus lampiran"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div id="composer">
       <textarea id="input" rows="1" placeholder="What do you want to build?"></textarea>
       <div class="row">
         <input type="file" id="attach-input" accept="image/*" style="display:none">
-        <button id="attach-btn" onclick="document.getElementById('attach-input').click()" title="Lampirkan gambar">📎</button>
+        <button id="attach-btn" class="svg-btn" onclick="document.getElementById('attach-input').click()" title="Lampirkan gambar" aria-label="Lampirkan gambar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+          </svg>
+        </button>
         <select class="model" id="model-select" title="Model AI"></select>
         <label class="mini-toggle"><input type="checkbox" id="stream-mode" checked> ⚡ Stream</label>
         <span class="hint-text">Enter ↵ kirim · Shift+Enter baris baru</span>
-        <button id="mic-btn" onclick="toggleMic()" title="Input suara">🎤</button>
-        <button id="send-btn" onclick="send()" title="Kirim">➤</button>
+        <button id="mic-btn" class="svg-btn" onclick="toggleMic()" title="Input suara" aria-label="Input suara">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" x2="12" y1="19" y2="22"/>
+          </svg>
+        </button>
+        <button id="send-btn" onclick="send()" title="Kirim" aria-label="Kirim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
       </div>
     </div>
   </div>
@@ -324,14 +355,15 @@ const topbarTitle = document.getElementById('topbar-title');
 
 const FALLBACK_MODELS = ['gpt-5-nano', 'gpt-4o-mini', 'claude-sonnet-4', 'gemini-2.5-flash', 'deepseek-chat', 'grok-4'];
 const SYSTEM_PROMPT = 'Anda adalah MiniDevin. Jika pengguna bertanya siapa Anda atau siapa kamu, jawab bahwa Anda adalah MiniDevin — AI software engineer. Bantu pengguna menulis, menjelaskan, dan memperbaiki kode. Jawab ringkas dalam Bahasa Indonesia kecuali diminta lain. Kode selalu dalam blok markdown dengan bahasa yang jelas.';
+const svg = (paths, w = 14) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="${w}" height="${w}">${paths}</svg>`;
 const COMMANDS = [
-  { cmd: '/gambar', icon: '🎨', desc: 'Buat gambar dari deskripsi teks' },
-  { cmd: '/kode', icon: '💻', desc: 'Minta bantuan menulis atau memperbaiki kode' },
-  { cmd: '/jelaskan', icon: '💡', desc: 'Penjelasan mendalam tentang sebuah konsep' },
-  { cmd: '/terjemahkan', icon: '🌐', desc: 'Terjemahkan teks ke bahasa lain' },
-  { cmd: '/rangkum', icon: '📝', desc: 'Ringkas teks panjang menjadi poin utama' },
-  { cmd: '/ulas', icon: '🔍', desc: 'Review kode: bug, performa, praktik terbaik' },
-  { cmd: '/berkas', icon: '📎', desc: 'Lampirkan gambar untuk dianalisis AI' }
+  { cmd: '/gambar', icon: svg('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>'), desc: 'Buat gambar dari deskripsi teks' },
+  { cmd: '/kode', icon: svg('<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>'), desc: 'Minta bantuan menulis atau memperbaiki kode' },
+  { cmd: '/jelaskan', icon: svg('<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>'), desc: 'Penjelasan mendalam tentang sebuah konsep' },
+  { cmd: '/terjemahkan', icon: svg('<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>'), desc: 'Terjemahkan teks ke bahasa lain' },
+  { cmd: '/rangkum', icon: svg('<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>'), desc: 'Ringkas teks panjang menjadi poin utama' },
+  { cmd: '/ulas', icon: svg('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'), desc: 'Review kode: bug, performa, praktik terbaik' },
+  { cmd: '/berkas', icon: svg('<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>'), desc: 'Lampirkan gambar untuk dianalisis AI' }
 ];
 let conversations = {};
 let currentId = null;
@@ -339,6 +371,9 @@ let busy = false;
 let abortRequested = false;
 const modelChip = document.getElementById('model-chip');
 const exportBtn = document.getElementById('export-btn');
+// Lucide "bot" — menggantikan emoji 🤖 agar tampil tajam di semua platform
+const BOT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>';
+const USER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
 
 function md(text) {
   try {
@@ -360,8 +395,10 @@ function addMsg(role, text, isMd) {
     img.src = 'minidevin.png'; img.alt = 'MiniDevin';
     img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'cover';
     av.appendChild(img);
+  } else if (role === 'user') {
+    av.innerHTML = USER_ICON;
   } else {
-    av.textContent = role === 'user' ? '👤' : '⚠';
+    av.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>';
   }
   const body = document.createElement('div');
   body.className = 'body';
@@ -401,13 +438,15 @@ function addCopyButtons(root) {
   });
 }
 
+const SEND_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
+const STOP_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" width="12" height="12"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
 function setBusy(v) {
   busy = v;
   sendBtn.disabled = false;
-  sendBtn.textContent = v ? '⏹' : '➤';
+  sendBtn.innerHTML = v ? STOP_ICON : SEND_ICON;
   sendBtn.title = v ? 'Berhenti' : 'Kirim';
   sendBtn.classList.toggle('stop', v);
-  typing.style.display = v ? 'block' : 'none';
+  typing.classList.toggle('show', v);
 }
 function showHome(show) {
   home.style.display = show ? 'flex' : 'none';
@@ -475,13 +514,13 @@ async function loadModels() {
   const saved = localStorage.getItem('minidevin_model');
   modelSelect.value = saved && models.includes(saved) ? saved : models[0];
   modelSelect.title = 'Model: ' + modelSelect.value;
-  modelChip.textContent = '🤖 ' + modelSelect.value;
+  modelChip.innerHTML = MODEL_ICON + '<span>' + modelSelect.value + '</span>';
   modelChip.title = 'Model aktif: ' + modelSelect.value;
 }
 modelSelect.onchange = () => {
   localStorage.setItem('minidevin_model', modelSelect.value);
   modelSelect.title = 'Model: ' + modelSelect.value;
-  modelChip.textContent = '🤖 ' + modelSelect.value;
+  modelChip.innerHTML = MODEL_ICON + '<span>' + modelSelect.value + '</span>';
   modelChip.title = 'Model aktif: ' + modelSelect.value;
 };
 
@@ -490,12 +529,12 @@ async function refreshAuth() {
     if (puter.auth.isSignedIn()) {
       const u = await puter.auth.getUser();
       const chip = document.getElementById('user-chip');
-      chip.style.display = '';
-      chip.textContent = '👤 ' + u.username;
+      chip.classList.add('show');
+      chip.innerHTML = ICONS.user + '<span>' + u.username + '</span>';
       authBtn.innerHTML = ICONS.logout;
       authBtn.title = 'Keluar (' + u.username + ')';
     } else {
-      document.getElementById('user-chip').style.display = 'none';
+      document.getElementById('user-chip').classList.remove('show');
       authBtn.innerHTML = ICONS.login;
       authBtn.title = 'Masuk dengan Puter';
     }
@@ -676,7 +715,7 @@ function renderSlash(filter) {
     const b = document.createElement('button');
     b.className = 'slash-item' + (i === slashSel ? ' sel' : '');
     b.innerHTML = '<span class="ic"></span><span class="cmd"></span><span class="desc"></span>';
-    b.querySelector('.ic').textContent = c.icon;
+    b.querySelector('.ic').innerHTML = c.icon; // svg literal string — safe
     b.querySelector('.cmd').textContent = c.cmd;
     b.querySelector('.desc').textContent = c.desc;
     b.onmousedown = (e) => { e.preventDefault(); applyCommand(c); };
@@ -695,21 +734,21 @@ function closeSlash() { slashPop.classList.remove('show'); slashSel = 0; }
 
 async function generateImage(prompt) {
   setBusy(true);
-  typing.textContent = '🎨 Generating image…';
+  typing.innerHTML = '<span class="spin"></span><span>Generating image…</span>';
   try {
     const img = await puter.ai.txt2img(prompt);
     const body = addMsg('ai', '');
-    body.innerHTML = '<div>🎨 <b></b></div>';
+    body.innerHTML = '<div><b></b></div>';
     body.querySelector('b').textContent = prompt;
     img.style.maxWidth = '100%'; img.style.borderRadius = '10px'; img.style.marginTop = '12px';
     body.appendChild(img);
     scrollChat();
-    conversations[currentId].messages.push({ role: 'assistant', content: `🎨 Gambar dibuat: ${prompt}` });
+    conversations[currentId].messages.push({ role: 'assistant', content: `Gambar dibuat: ${prompt}` });
   } catch (e) {
-    addMsg('error', '⚠️ Gagal membuat gambar: ' + (e.message || e));
+    addMsg('error', 'Gagal membuat gambar: ' + (e.message || e));
   }
   setBusy(false);
-  typing.textContent = 'MiniDevin is working';
+  typing.innerHTML = '<span class="spin"></span><span>MiniDevin is working</span>';
 }
 
 async function send() {
@@ -726,7 +765,19 @@ async function send() {
     topbarTitle.textContent = (text || attachData.name).slice(0, 50);
   }
   showHome(false);
-  addMsg('user', text + (attachData ? '\n📎 ' + attachData.name : ''));
+  // Lampiran dirender sebagai baris khusus, bukan emoji 📎 di teks
+  {
+    const body = addMsg('user', text);
+    if (attachData) {
+      const chip = document.createElement('div');
+      chip.className = 'attach-row';
+      chip.innerHTML = '<span class="ic"></span><img alt="lampiran"><span class="nm"></span>';
+      chip.querySelector('.ic').innerHTML = COMMANDS.find(c => c.cmd === '/berkas').icon;
+      chip.querySelector('img').src = attachData.dataUrl;
+      chip.querySelector('.nm').textContent = attachData.name;
+      body.appendChild(chip);
+    }
+  }
   const userMsg = { role: 'user', content: text || 'Analisis gambar ini.' };
   if (attachData) userMsg.image = attachData.dataUrl;
   conversations[currentId].messages.push(userMsg);
@@ -802,7 +853,7 @@ async function send() {
       conversations[currentId].messages.push({ role: 'assistant', content: textOut });
     }
   } catch (e) {
-    if (!abortRequested) addMsg('error', '⚠️ ' + (e.message || JSON.stringify(e)));
+    if (!abortRequested) addMsg('error', (e.message || JSON.stringify(e)));
   }
   abortRequested = false;
   setBusy(false);
