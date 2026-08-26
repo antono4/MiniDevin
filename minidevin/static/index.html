@@ -65,7 +65,9 @@
     font-family: var(--font-ui); transition: filter .15s, transform .15s, box-shadow .15s;
   }
   .sb-new:hover { filter: brightness(1.08); box-shadow: 0 4px 14px var(--primary-glow); }
-  .sb-label { padding: 4px 20px 8px; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--content-3); }
+  .sb-label { padding: 4px 20px 8px; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--content-3); display: flex; align-items: center; justify-content: space-between; }
+  .sb-label button { background: none; border: none; color: var(--content-3); cursor: pointer; font-size: 11px; }
+  .sb-label button:hover { color: var(--error-border); }
   #convo-list { flex: 1; overflow-y: auto; padding: 0 10px; }
   .convo { padding: 9px 12px; border-radius: 8px; font-size: 13px; color: var(--content-2); cursor: pointer; display: flex; align-items: center; gap: 8px; margin-bottom: 2px; transition: background .12s, color .12s; }
   .convo:hover { background: var(--base-tertiary); color: var(--content); }
@@ -176,6 +178,11 @@
   }
   .svg-btn svg { display: block; }
   .svg-btn:hover { background: var(--base-tertiary); color: var(--content); border-color: var(--primary); transform: translateY(-1px); }
+  .svg-btn.md-off { opacity: .55; }
+  .svg-btn:not(.md-off) { color: var(--primary); }
+  #md-preview-box { opacity: .7; padding: 12px 0; border-top: 1px dashed var(--border); }
+  #md-preview-box .body { padding: 8px 14px; background: var(--base-tertiary); border: 1px dashed var(--border); border-radius: 10px; font-size: 12.5px; }
+  #md-preview-box .body code { font-size: 12px; }
   #mic-btn { display: none; }
   #mic-btn.recording { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); animation: micpulse 1.4s ease-out infinite; }
   @keyframes micpulse { 0% { box-shadow: 0 0 0 0 rgba(229,72,77,.35) } 100% { box-shadow: 0 0 0 12px rgba(229,72,77,0) } }
@@ -206,12 +213,12 @@
   .msg.ai:hover .tools { opacity: 1; }
   .tools .tbtn { background: var(--base-tertiary); border: 1px solid var(--border); color: var(--content-2); border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; font-family: var(--font-ui); }
   .tools .tbtn:hover { color: var(--content); border-color: var(--primary); }
-  #slash-pop {
+  #slash-pop, #export-menu {
     position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); width: min(420px, 92vw);
     background: var(--base-secondary); border: 1px solid var(--border); border-radius: 14px; z-index: 30;
     box-shadow: 0 16px 48px rgba(0,0,0,.5); overflow: hidden; display: none;
   }
-  #slash-pop.show { display: block; }
+  #slash-pop.show, #export-menu.show { display: block; }
   .slash-item { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; color: var(--content); padding: 11px 14px; font-size: 13px; cursor: pointer; text-align: left; font-family: var(--font-ui); transition: background .12s; }
   .slash-item:hover, .slash-item.sel { background: var(--primary-dim); }
   .slash-item .ic { width: 24px; display: flex; align-items: center; justify-content: center; color: var(--content-2); flex-shrink: 0; }
@@ -274,7 +281,8 @@
     </div>
   </div>
   <button class="sb-new" onclick="newChat()">+ New Thread</button>
-  <div class="sb-label">Conversations</div>
+  <div class="sb-label">Conversations <button id="sb-del-all" title="Hapus semua"
+    onclick="deleteSelected()">✕</button></div>
   <div id="convo-list"></div>
   <div class="sb-foot">
     <button class="icon-btn" id="auth-btn" onclick="toggleAuth()" title="Masuk / Keluar dengan Puter"></button>
@@ -290,7 +298,14 @@
     <span id="topbar-title" style="font-size:14px;font-weight:600;color:var(--content-2)">New conversation</span>
     <span id="model-chip" style="font-size:11px;color:var(--content-3);background:var(--base-tertiary);border-radius:12px;padding:3px 10px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex;align-items:center;gap:5px"></span>
     <span class="spacer"></span>
-    <button class="icon-btn" id="export-btn" onclick="exportChat('md')" title="Ekspor chat sebagai Markdown" style="display:none">📥</button>
+    <div id="export-menu-wrap" style="position:relative;display:none">
+      <button class="icon-btn" id="export-btn" onclick="toggleExportMenu()" title="Ekspor chat">📥</button>
+      <div id="export-menu">
+        <button onclick="exportChat('md')">Markdown (.md)</button>
+        <button onclick="exportChat('json')">JSON (.json)</button>
+        <button onclick="exportChat('html')">HTML (.html)</button>
+      </div>
+    </div>
   </div>
 
   <div id="home">
@@ -319,6 +334,9 @@
       <textarea id="input" rows="1" placeholder="What do you want to build?"></textarea>
       <div class="row">
         <input type="file" id="attach-input" accept="image/*" style="display:none">
+        <button id="md-toggle" class="svg-btn md-off" title="Ural preview markdown" aria-label="Toggle markdown preview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M14.19 3.69H3.19a.99.99 0 0 0-.99.99v14.63a.99.99 0 0 0 .99.99h11a.99.99 0 0 0 .99-.99v-14.63a.99.99 0 0 0-.99-.99z"/><path d="M2.2 5.5v13"/><path d="M3.19 7.11h.01"/><path d="M8.19 7.11h.01"/><path d="M13.19 7.11h.01"/></svg>
+        </button>
         <button id="attach-btn" class="svg-btn" onclick="document.getElementById('attach-input').click()" title="Lampirkan gambar" aria-label="Lampirkan gambar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
             <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
@@ -373,7 +391,48 @@ const modelChip = document.getElementById('model-chip');
 const exportBtn = document.getElementById('export-btn');
 // Lucide "bot" — menggantikan emoji 🤖 agar tampil tajam di semua platform
 const BOT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>';
+let mdPreview = false; // toggle live preview markdown di input
 const USER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+
+async function deleteSelected() {
+  if (!Object.keys(conversations).length) return;
+  if (!confirm('Hapus semua percakapan?')) return;
+  conversations = {};
+  currentId = null;
+  newChat();
+  await saveConversations();
+  renderConvoList();
+}
+
+async function regenerateResponse() {
+  if (!currentId || !conversations[currentId]) return;
+  if (busy) { abortRequested = true; return; }
+  const msgs = conversations[currentId].messages;
+  // Hapus response terakhir jika AI
+  if (msgs.length && msgs[msgs.length - 1].role === 'assistant') msgs.pop();
+  const history = msgs.slice(-20).map(m => ({ role: m.role, content: m.content }));
+  const messages = [{ role: 'system', content: SYSTEM_PROMPT }, ...history];
+  setBusy(true);
+  abortRequested = false;
+  try {
+    const body = addMsg('ai', '');
+    let full = '';
+    const resp = await puter.ai.chat(messages, { model: modelSelect.value, stream: true });
+    for await (const part of resp) {
+      if (abortRequested) break;
+      if (part?.text) { full += part.text; body.innerHTML = md(full) + '<span class="cursor"></span>'; scrollChat(); }
+    }
+    if (abortRequested) full += '\n\n_⏹ Dihentikan pengguna._';
+    body.innerHTML = md(full);
+    addCopyButtons(body);
+    msgs.push({ role: 'assistant', content: full });
+  } catch (e) {
+    addMsg('error', (e.message || JSON.stringify(e)));
+  }
+  abortRequested = false;
+  setBusy(false);
+  await saveConversations();
+}
 
 function md(text) {
   try {
@@ -406,6 +465,9 @@ function addMsg(role, text, isMd) {
   if (role === 'ai') {
     const tools = document.createElement('div');
     tools.className = 'tools';
+    const regen = document.createElement('button');
+    regen.className = 'tbtn'; regen.textContent = '↻ Ulang';
+    regen.onclick = () => regenerateResponse();
     const cp = document.createElement('button');
     cp.className = 'tbtn'; cp.textContent = '⧉ Salin';
     cp.onclick = () => {
@@ -413,7 +475,7 @@ function addMsg(role, text, isMd) {
       cp.textContent = '✓ Disalin';
       setTimeout(() => cp.textContent = '⧉ Salin', 1200);
     };
-    tools.appendChild(cp);
+    tools.appendChild(regen); tools.appendChild(cp);
     body.appendChild(tools);
   }
   d.appendChild(av); d.appendChild(body);
@@ -452,7 +514,7 @@ function showHome(show) {
   home.style.display = show ? 'flex' : 'none';
   chatWrap.style.display = show ? 'none' : 'block';
   if (show) topbarTitle.textContent = 'New conversation';
-  exportBtn.style.display = show ? 'none' : '';
+  document.getElementById('export-menu-wrap').style.display = show ? 'none' : 'block';
 }
 
 const sidebarEl = document.getElementById('sidebar');
@@ -606,7 +668,15 @@ function openChat(id) {
   currentId = id;
   topbarTitle.textContent = conversations[id].title || 'Percakapan';
   chatEl.innerHTML = '';
-  (conversations[id].messages || []).forEach(m => addMsg(m.role, m.content, m.role !== 'user'));
+  (conversations[id].messages || []).forEach(m => {
+    const body = addMsg(m.role, m.content, m.role !== 'user');
+    // Gambar lampiran ikut ditampilkan saat mode history (longannya menyimpan imageUrl)
+    if (m.image && m.role === 'user') {
+      const img = document.createElement('img');
+      img.src = m.image; img.alt = 'lampiran'; img.style.maxWidth = '220px'; img.style.borderRadius = '10px'; img.style.marginTop = '8px';
+      body.appendChild(img);
+    }
+  });
   showHome(false);
   renderConvoList();
   if (isMobile()) closeSidebar();
@@ -630,6 +700,13 @@ function downloadFile(name, content, type) {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+function toggleExportMenu() {
+  const m = document.getElementById('export-menu');
+  m.classList.toggle('show');
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#export-menu-wrap')) m.classList.remove('show');
+  }, { once: true });
+}
 function exportChat(fmt) {
   if (!currentId || !conversations[currentId]) return;
   const c = conversations[currentId];
@@ -637,13 +714,33 @@ function exportChat(fmt) {
   const base = 'minidevin-' + (c.title || 'chat').toLowerCase().replace(/[^\w\- ]/g, '').trim().replace(/\s+/g, '-').slice(0, 40) + '-' + stamp;
   if (fmt === 'json') {
     downloadFile(base + '.json', JSON.stringify(c, null, 2), 'application/json');
+    document.getElementById('export-menu').classList.remove('show');
     return;
   }
-  const lines = ['# ' + (c.title || 'Percakapan MiniDevin'), '', '_Diekspor dari MiniDevin — ' + new Date().toLocaleString('id-ID') + '_', ''];
+  if (fmt === 'md') {
+    const lines = ['# ' + (c.title || 'Percakapan MiniDevin'), '', '_Diekspor dari MiniDevin — ' + new Date().toLocaleString('id-ID') + '_', ''];
+    (c.messages || []).forEach(m => {
+      lines.push(m.role === 'user' ? '## 🧑 Anda' : '## 🐚 MiniDevin', '', m.content, '');
+    });
+    downloadFile(base + '.md', lines.join('\n'), 'text/markdown');
+    document.getElementById('export-menu').classList.remove('show');
+    return;
+  }
+  // html export
+  const html = ['<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">',
+    '<title>' + (c.title || 'MiniDevin Export') + '</title>',
+    '<style>body{font-family:sans-serif;max-width:800px;margin:40px auto;color:#222}h2{color:#555}pre{background:#f4f4f4;padding:10px;border-radius:8px;overflow:auto}</style>',
+    '</head><body>'];
   (c.messages || []).forEach(m => {
-    lines.push(m.role === 'user' ? '## 🧑 Anda' : '## 🐚 MiniDevin', '', m.content, '');
+    const tag = m.role === 'user' ? '<h2>Anda</h2>' : '<h2>MiniDevin</h2>';
+    html.push(tag, '<pre>' + escapeHtml(m.content) + '</pre>');
   });
-  downloadFile(base + '.md', lines.join('\n'), 'text/markdown');
+  html.push('</body></html>');
+  downloadFile(base + '.html', html.join('\n'), 'text/html');
+  document.getElementById('export-menu').classList.remove('show');
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 }
 
 /* ---------- input suara ---------- */
@@ -870,12 +967,36 @@ input.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
 });
+let mdPreviewBox = null;
+const mdToggle = document.getElementById('md-toggle');
+mdToggle.onclick = () => {
+  mdPreview = !mdPreview;
+  mdToggle.classList.toggle('md-off', !mdPreview);
+  mdToggle.title = mdPreview ? 'Markdown ON' : 'Markdown OFF';
+  if (!mdPreview && mdPreviewBox) { mdPreviewBox.remove(); mdPreviewBox = null; return; }
+  renderMdPreview();
+};
+function renderMdPreview() {
+  if (!mdPreview) { if (mdPreviewBox) { mdPreviewBox.remove(); mdPreviewBox = null; } return; }
+  if (!mdPreviewBox) {
+    mdPreviewBox = document.createElement('div');
+    mdPreviewBox.id = 'md-preview-box';
+    mdPreviewBox.className = 'msg ai preview';
+    const av = document.createElement('div'); av.className = 'avatar'; av.innerHTML = BOT_ICON;
+    const body = document.createElement('div'); body.className = 'body';
+    mdPreviewBox.appendChild(av); mdPreviewBox.appendChild(body);
+    document.getElementById('composer').parentElement.insertBefore(mdPreviewBox, document.getElementById('composer'));
+  }
+  mdPreviewBox.querySelector('.body').innerHTML = md(input.value || '_Preview…_') || '<em>Preview…</em>';
+}
+
 input.addEventListener('input', () => {
   input.style.height = 'auto';
   input.style.height = Math.min(input.scrollHeight, 160) + 'px';
   const v = input.value.trim();
   if (v.startsWith('/')) { slashSel = 0; renderSlash(v.split(' ')[0]); }
   else closeSlash();
+  renderMdPreview();
 });
 
 (async () => {

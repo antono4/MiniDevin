@@ -75,3 +75,26 @@ def test_html_meta():
     src = INDEX.read_text(encoding='utf-8')
     assert 'viewport' in src.lower()
     assert '<button' in src and '<select' in src
+
+
+def test_export_menu_present():
+    src = INDEX.read_text(encoding='utf-8')
+    assert 'export-menu' in src and 'toggleExportMenu' in src
+    assert 'exportChat(\'html\')' in src or 'exportChat("html")' in src, 'html export missing'
+
+
+def test_delete_selected_present():
+    src = INDEX.read_text(encoding='utf-8')
+    assert 'deleteSelected' in src
+    assert 'sb-del-all' in src
+
+
+def test_regenerate_present():
+    src = INDEX.read_text(encoding='utf-8')
+    assert 'regenerateResponse' in src
+
+
+def test_markdown_toggle_present():
+    src = INDEX.read_text(encoding='utf-8')
+    assert 'md-toggle' in src
+    assert 'md-preview-box' in src or 'mdPreview' in src
