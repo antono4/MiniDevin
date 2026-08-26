@@ -44,7 +44,7 @@
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
-  body { font-family: var(--font-ui); background: var(--background); color: var(--content); display: flex; overflow: hidden; }
+  body { font-family: var(--font-ui); background: var(--background); color: var(--content); display: flex; overflow: hidden; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   body::before {
     content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
     background: radial-gradient(1200px 600px at 80% -10%, rgba(195,247,58,.05), transparent),
@@ -74,7 +74,7 @@
   .convo .d, .convo .r { background: none; border: none; color: var(--content-3); cursor: pointer; visibility: hidden; font-size: 12px; padding: 2px; transition: color .12s; }
   .convo .d { color: var(--error-border); }
   .convo:hover .d, .convo:hover .r { visibility: visible; }
-  .sb-foot { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 4px; align-items: center; }
+  .sb-foot { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 4px; align-items: center; background: linear-gradient(180deg, transparent, rgba(0,0,0,.18)); }
   .sb-foot .icon-btn { font-size: 15px; }
 
   /* ---------- main ---------- */
@@ -92,7 +92,8 @@
   #home { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; position: relative; }
   .orb { position: absolute; top: 50%; width: min(560px, 80vw); height: min(560px, 80vw); background: radial-gradient(circle, var(--primary-glow), transparent 58%); filter: blur(40px); animation: orb 14s ease-in-out infinite alternate; pointer-events: none; }
   @keyframes orb { from { transform: translateY(-70%) scale(.9) rotate(0deg); } to { transform: translateY(-50%) scale(1.1) rotate(360deg); } }
-  .home-logo { width: 96px; height: 96px; border-radius: 24px; overflow: hidden; margin-bottom: 22px; border: 1px solid var(--border); box-shadow: 0 10px 42px rgba(0,0,0,.4); position: relative; z-index: 1; animation: float 4.5s ease-in-out infinite; }
+  .home-logo { width: 96px; height: 96px; border-radius: 24px; overflow: hidden; margin-bottom: 22px; border: 1px solid var(--border); box-shadow: 0 10px 42px rgba(0,0,0,.4), 0 0 0 4px rgba(0,0,0,.15), 0 0 24px var(--primary-glow); position: relative; z-index: 1; animation: float 4.5s ease-in-out infinite; }
+  .home-logo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(255,255,255,.18), transparent 52%); pointer-events: none; border-radius: inherit; }
   @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
   .home-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
   #home h2 { font-size: clamp(30px, 5vw, 42px); font-weight: 700; margin-bottom: 14px; text-align: center; letter-spacing: -.6px; position: relative; z-index: 1; }
@@ -104,7 +105,9 @@
     font-size: 13px; color: var(--content-2); cursor: pointer; text-align: left; font-family: var(--font-ui);
     transition: border-color .2s, color .2s, transform .2s, box-shadow .2s; line-height: 1.55; position: relative;
   }
-  .sugg:hover { border-color: var(--primary); color: var(--content); transform: translateY(-3px); box-shadow: 0 8px 26px rgba(0,0,0,.35); }
+  .sugg::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(140deg, var(--primary) 0%, transparent 40%); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; transition: opacity .25s; }
+  .sugg:hover { border-color: transparent; color: var(--content); transform: translateY(-3px); box-shadow: 0 8px 26px rgba(0,0,0,.35); }
+  .sugg:hover::before { opacity: 1; }
 
   /* ---------- chat ---------- */
   #chat-wrap { flex: 1; overflow-y: auto; display: none; scroll-behavior: smooth; }
@@ -126,21 +129,31 @@
   .msg.ai ul, .msg.ai ol { margin: 6px 0 6px 22px; }
   .msg.ai img { max-width: 100%; border-radius: 12px; margin-top: 12px; border: 1px solid var(--border); }
   .msg.ai h1, .msg.ai h2, .msg.ai h3 { font-weight: 600; margin: 12px 0 6px; }
-  .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--base-tertiary); border: 1px solid var(--border); color: var(--content-2); border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; opacity: 0; transition: opacity .15s; font-family: var(--font-ui); }
-  pre:hover .copy-btn { opacity: 1; }
+  .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--base-tertiary); border: 1px solid var(--border); color: var(--content-2); border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; opacity: 0; transform: translateY(-2px); transition: opacity .15s, transform .15s; font-family: var(--font-ui); }
+  pre:hover .copy-btn { opacity: 1; transform: translateY(0); }
   .cursor { display: inline-block; width: 7px; height: 15px; background: var(--primary); vertical-align: text-bottom; animation: blink 1s steps(2) infinite; border-radius: 2px; }
   @keyframes blink { 50% { opacity: 0; } }
-  #typing { display: none; max-width: 790px; margin: 0 auto; padding: 0 26px 8px; color: var(--primary); font-size: 12.5px; font-weight: 600; }
+  #typing { display: none; max-width: 790px; margin: 0 auto; padding: 0 26px 8px; color: var(--primary); font-size: 12.5px; font-weight: 600; align-items: center; gap: 6px; }
+  #typing.show { display: inline-flex; }
   #typing .dot { animation: blink 1.2s infinite; }
+  .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--primary); border-top-color: transparent; border-radius: 50%; animation: rot .7s linear infinite; vertical-align: middle; }
+  @keyframes rot { to { transform: rotate(360deg); } }
 
   /* ---------- composer ---------- */
   #composer-wrap { padding: 12px 24px 18px; }
   #composer {
     max-width: 790px; margin: 0 auto; background: linear-gradient(180deg, var(--base-secondary), var(--base-tertiary));
-    border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px 8px; transition: border-color .2s, box-shadow .2s;
-    box-shadow: 0 4px 24px rgba(0,0,0,.35);
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px 8px; transition: border-color .2s, box-shadow .2s, transform .2s;
+    box-shadow: 0 4px 24px rgba(0,0,0,.35); position: relative;
   }
-  #composer:focus-within { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary), 0 8px 32px rgba(0,0,0,.4); }
+  #composer::before {
+    content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px;
+    background: linear-gradient(135deg, var(--primary), transparent 35%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  #composer:hover::before, #composer:focus-within::before { opacity: 1; }
+  #composer:focus-within { border-color: transparent; box-shadow: 0 0 0 1px var(--primary), 0 8px 32px rgba(0,0,0,.4); }
   #input { width: 100%; background: none; border: none; outline: none; color: var(--content); font-size: 14.5px; resize: none; font-family: var(--font-ui); max-height: 160px; padding: 4px 6px; line-height: 1.6; }
   #input::placeholder { color: var(--content-3); }
   #composer .row { display: flex; align-items: center; gap: 10px; padding: 6px 2px 2px; }
@@ -321,7 +334,7 @@
             <line x1="12" x2="12" y1="19" y2="22"/>
           </svg>
         </button>
-        <button id="send-btn" onclick="send()" title="Kirim">➤</button>
+        <button id="send-btn" onclick="send()" title="Kirim" aria-label="Kirim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
       </div>
     </div>
   </div>
@@ -425,13 +438,15 @@ function addCopyButtons(root) {
   });
 }
 
+const SEND_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
+const STOP_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" width="12" height="12"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
 function setBusy(v) {
   busy = v;
   sendBtn.disabled = false;
-  sendBtn.textContent = v ? '⏹' : '➤';
+  sendBtn.innerHTML = v ? STOP_ICON : SEND_ICON;
   sendBtn.title = v ? 'Berhenti' : 'Kirim';
   sendBtn.classList.toggle('stop', v);
-  typing.style.display = v ? 'block' : 'none';
+  typing.classList.toggle('show', v);
 }
 function showHome(show) {
   home.style.display = show ? 'flex' : 'none';
@@ -719,21 +734,21 @@ function closeSlash() { slashPop.classList.remove('show'); slashSel = 0; }
 
 async function generateImage(prompt) {
   setBusy(true);
-  typing.textContent = '🎨 Generating image…';
+  typing.innerHTML = '<span class="spin"></span><span>Generating image…</span>';
   try {
     const img = await puter.ai.txt2img(prompt);
     const body = addMsg('ai', '');
-    body.innerHTML = '<div>🎨 <b></b></div>';
+    body.innerHTML = '<div><b></b></div>';
     body.querySelector('b').textContent = prompt;
     img.style.maxWidth = '100%'; img.style.borderRadius = '10px'; img.style.marginTop = '12px';
     body.appendChild(img);
     scrollChat();
-    conversations[currentId].messages.push({ role: 'assistant', content: `🎨 Gambar dibuat: ${prompt}` });
+    conversations[currentId].messages.push({ role: 'assistant', content: `Gambar dibuat: ${prompt}` });
   } catch (e) {
-    addMsg('error', '⚠️ Gagal membuat gambar: ' + (e.message || e));
+    addMsg('error', 'Gagal membuat gambar: ' + (e.message || e));
   }
   setBusy(false);
-  typing.textContent = 'MiniDevin is working';
+  typing.innerHTML = '<span class="spin"></span><span>MiniDevin is working</span>';
 }
 
 async function send() {
@@ -838,7 +853,7 @@ async function send() {
       conversations[currentId].messages.push({ role: 'assistant', content: textOut });
     }
   } catch (e) {
-    if (!abortRequested) addMsg('error', '⚠️ ' + (e.message || JSON.stringify(e)));
+    if (!abortRequested) addMsg('error', (e.message || JSON.stringify(e)));
   }
   abortRequested = false;
   setBusy(false);
