@@ -285,7 +285,7 @@
     onclick="deleteSelected()">✕</button></div>
   <div id="convo-list"></div>
   <div class="sb-foot">
-    <button class="icon-btn" id="auth-btn" onclick="toggleAuth()" title="Masuk / Keluar dengan Puter"></button>
+    <button class="icon-btn" id="auth-btn" onclick="toggleAuth()" title="Masuk dengan Puter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></button>
     <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Tema"></button>
     <span class="spacer"></span>
     <span id="user-chip"></span>
@@ -652,7 +652,12 @@ async function refreshAuth() {
       authBtn.innerHTML = ICONS.login;
       authBtn.title = 'Masuk dengan Puter';
     }
-  } catch (e) {}
+  } catch (e) {
+    // fallback: SDK Puter lambat/gagal — tetap tampilkan ikon masuk
+    document.getElementById('user-chip').classList.remove('show');
+    authBtn.innerHTML = ICONS.login;
+    authBtn.title = 'Masuk dengan Puter';
+  }
 }
 async function toggleAuth() {
   try {
@@ -1060,8 +1065,8 @@ input.addEventListener('input', () => {
 
 (async () => {
   renderThemeIcon();
+  refreshAuth();
   await loadModels();
-  await refreshAuth();
   await loadConversations();
   showHome(true);
 })();
