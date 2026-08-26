@@ -213,12 +213,17 @@
   .msg.ai:hover .tools { opacity: 1; }
   .tools .tbtn { background: var(--base-tertiary); border: 1px solid var(--border); color: var(--content-2); border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; font-family: var(--font-ui); }
   .tools .tbtn:hover { color: var(--content); border-color: var(--primary); }
-  #slash-pop, #export-menu {
-    position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); width: min(420px, 92vw);
+  #slash-pop, #export-menu, #auth-menu {
+    position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%);
     background: var(--base-secondary); border: 1px solid var(--border); border-radius: 14px; z-index: 30;
     box-shadow: 0 16px 48px rgba(0,0,0,.5); overflow: hidden; display: none;
   }
-  #slash-pop.show, #export-menu.show { display: block; }
+  #slash-pop.show, #export-menu.show, #auth-menu.show { display: block; }
+  #auth-menu button { width: 100%; text-align: left; padding: 10px 14px; font-size: 13px; background: none; border: none; color: var(--content); cursor: pointer; font-family: var(--font-ui); }
+  #auth-menu button:hover { background: var(--primary-dim); }
+  #auth-menu hr { border: none; border-top: 1px solid var(--border); margin: 2px 0; }
+  #auth-menu .hint { font-size: 11px; color: var(--content-3); padding: 8px 14px; }
+  #auth-menu { width: min(340px, 92vw); }
   .slash-item { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; color: var(--content); padding: 11px 14px; font-size: 13px; cursor: pointer; text-align: left; font-family: var(--font-ui); transition: background .12s; }
   .slash-item:hover, .slash-item.sel { background: var(--primary-dim); }
   .slash-item .ic { width: 24px; display: flex; align-items: center; justify-content: center; color: var(--content-2); flex-shrink: 0; }
@@ -285,7 +290,15 @@
     onclick="deleteSelected()">✕</button></div>
   <div id="convo-list"></div>
   <div class="sb-foot">
-    <button class="icon-btn" id="auth-btn" onclick="toggleAuth()" title="Masuk / Keluar dengan Puter"></button>
+    <div id="auth-menu-wrap" style="position:relative;display:inline-flex">
+      <button class="icon-btn" id="auth-btn" onclick="toggleAuthMenu()" title="Masuk dengan Puter atau GitHub"></button>
+      <div id="auth-menu">
+        <button onclick="toggleAuth()">Masuk / Keluar dengan Puter</button>
+        <hr>
+        <button onclick="githubLogin()">Masuk dengan GitHub (vía OAuth)</button>
+        <p class="hint">Setup: buat OAuth App di GitHub, set Client ID di localStorage 'minidevin_gh_client'</p>
+      </div>
+    </div>
     <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Tema"></button>
     <span class="spacer"></span>
     <span id="user-chip"></span>
@@ -640,44 +653,64 @@ modelSelect.onchange = () => {
 
 async function refreshAuth() {
   try {
+    const ghToken = localStorage.getItem('gh_token');
+    let label, isPuter = false;
     if (puter.auth.isSignedIn()) {
       const u = await puter.auth.getUser();
-      const chip = document.getElementById('user-chip');
+      label = u.username; isPuter = true;
+    } else if (ghToken) {
+      const r = await fetch('https://api.github.com/user', { headers: { Authorization: `Bearer ${ghToken}` } });
+      if (r.ok) { label = 'gh: ' + (await r.json()).login; }
+    }
+    const chip = document.getElementById('user-chip');
+    if (label) {
       chip.classList.add('show');
-      chip.innerHTML = ICONS.user + '<span>' + u.username + '</span>';
-      authBtn.innerHTML = ICONS.logout;
-      authBtn.title = 'Keluar (' + u.username + ')';
+      chip.innerHTML = ICONS.user + '<span>' + label + '</span>';
+      const authSel = document.getElementById('auth-menu-wrap').querySelector('button');
+      if (isPuter) { authBtn.innerHTML = ICONS.logout; authBtn.title = 'Keluar (Puter)'; }
+      else { authBtn.innerHTML = ICONS.logout; authBtn.title = 'Keluar (GitHub)'; }
     } else {
-      document.getElementById('user-chip').classList.remove('show');
+      chip.classList.remove('show');
       authBtn.innerHTML = ICONS.login;
-      authBtn.title = 'Masuk dengan Puter';
+      authBtn.title = 'Masuk dengan Puter atau GitHub';
     }
   } catch (e) {}
 }
 async function toggleAuth() {
   try {
     if (puter.auth.isSignedIn()) await puter.auth.signOut();
-    else await puter.auth.signIn();
+    else {
+      localStorage.removeItem('gh_token');
+      await puter.auth.signIn();
+    }
   } catch (e) {}
   refreshAuth();
   loadConversations();
 }
 
+function storageKey() {
+  // storage split per provider agar tidak saling menimpa
+  if (puter.auth.isSignedIn()) return 'minidevin_convos';
+  if (localStorage.getItem('gh_token')) return 'minidevin_convos_gh';
+  return 'minidevin_convos';
+}
 async function loadConversations() {
   conversations = {};
   try {
     let raw = null;
-    if (puter.auth.isSignedIn()) raw = await puter.kv.get('minidevin_convos');
-    else raw = localStorage.getItem('minidevin_convos');
+    const key = storageKey();
+    if (puter.auth.isSignedIn()) raw = await puter.kv.get(key);
+    else raw = localStorage.getItem(key);
     if (raw) conversations = JSON.parse(raw);
   } catch (e) {}
   renderConvoList();
 }
 async function saveConversations() {
   const data = JSON.stringify(conversations);
+  const key = storageKey();
   try {
-    if (puter.auth.isSignedIn()) await puter.kv.set('minidevin_convos', data);
-    else localStorage.setItem('minidevin_convos', data);
+    if (puter.auth.isSignedIn()) await puter.kv.set(key, data);
+    else localStorage.setItem(key, data);
   } catch (e) {}
 }
 function renderConvoList() {
@@ -759,6 +792,52 @@ function toggleExportMenu() {
     if (!e.target.closest('#export-menu-wrap')) m.classList.remove('show');
   }, { once: true });
 }
+
+function toggleAuthMenu() {
+  const m = document.getElementById('auth-menu');
+  m.classList.toggle('show');
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#auth-menu-wrap')) m.classList.remove('show');
+  }, { once: true });
+}
+
+/* ---------- Login GitHub via OAuth ---------- */
+function githubLogin() {
+  const clientId = localStorage.getItem('minidevin_gh_client');
+  if (!clientId) {
+    alert("Belum setup Client ID.\n\n" +
+      "1. Daftar OAuth App di https://github.com/settings/developers\n" +
+      "2. Callback URL: " + location.origin + location.pathname + "\n" +
+      "3. jalankan di console: localStorage.setItem('minidevin_gh_client', 'CLIENT_ID')");
+    return;
+  }
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: location.origin + location.pathname,
+    scope: 'user'
+  });
+  window.open('https://github.com/login/oauth/authorize?' + params.toString(), 'github-oauth', 'width=600,height=640');
+}
+
+// Handle callback dari OAuth GitHub — token disimpan di localStorage 'gh_token'
+(function issueWire() {
+  const url = new URLSearchParams(location.search);
+  const code = url.get('code');
+  if (!code || !localStorage.getItem('minidevin_gh_client')) return;
+  const clientId = localStorage.getItem('minidevin_gh_client');
+  try {
+    fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: clientId, code })
+    }).then(r => r.json()).then(d => {
+      if (d.access_token) {
+        localStorage.setItem('gh_token', d.access_token);
+        location.href = location.origin + location.pathname;
+      }
+    });
+  } catch (e) {}
+})();
 function exportChat(fmt) {
   if (!currentId || !conversations[currentId]) return;
   const c = conversations[currentId];

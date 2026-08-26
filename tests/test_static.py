@@ -105,3 +105,16 @@ def test_compare_button_present():
     assert 'compare-btn' in src
     assert 'compareModels' in src
     assert 'compareModelsAgainst' in src
+
+
+def test_github_login_present():
+    src = INDEX.read_text(encoding='utf-8')
+    assert 'githubLogin' in src
+    assert 'auth-menu' in src
+    assert 'gh_token' in src
+
+
+def test_auth_storage_split_present():
+    src = INDEX.read_text(encoding='utf-8')
+    assert 'storageKey' in src
+    assert 'minidevin_convos_gh' in src

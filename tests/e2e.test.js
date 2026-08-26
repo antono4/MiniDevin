@@ -203,6 +203,17 @@ async function run() {
     assert.ok(count === 1, 'compare button missing');
   });
 
+  await test('auth menu opens with github option', async (p) => {
+    await p.evaluate(() => {
+      toggleAuthMenu();
+    });
+    const html = await p.innerHTML('#auth-menu');
+    assert.ok(html.includes('GitHub'), 'github option missing');
+    assert.ok(html.includes('Puter'), 'puter option missing');
+    const visible = await p.locator('#auth-menu.show').count();
+    assert.ok(visible === 1, 'menu not opened');
+  });
+
   await test('toggle theme persists preference', async (p) => {
     await p.click('#theme-btn');
     const theme = await p.getAttribute('html', 'data-theme');
