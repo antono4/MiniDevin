@@ -181,6 +181,11 @@
   #attach-prev .meta { flex: 1; min-width: 0; font-size: 12px; color: var(--content-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #attach-prev .x { background: none; border: none; color: var(--content-3); cursor: pointer; font-size: 15px; padding: 4px 6px; border-radius: 6px; }
   #attach-prev .x:hover { background: var(--error-bg); color: var(--error-border); }
+  #attach-prev .x svg { display: block; }
+  .attach-row { display: flex; align-items: center; gap: 9px; margin-top: 9px; padding: 8px 11px; background: var(--base-tertiary); border: 1px solid var(--border); border-radius: 10px; }
+  .attach-row .ic { color: var(--content-2); flex-shrink: 0; display: flex; }
+  .attach-row img { max-height: 40px; border-radius: 7px; border: 1px solid var(--border); }
+  .attach-row .nm { flex: 1; min-width: 0; font-size: 12px; color: var(--content-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .msg.ai .body { position: relative; }
   .msg .tools { position: absolute; top: -13px; right: 0; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
   .msg.ai:hover .tools { opacity: 1; }
@@ -194,7 +199,7 @@
   #slash-pop.show { display: block; }
   .slash-item { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; color: var(--content); padding: 11px 14px; font-size: 13px; cursor: pointer; text-align: left; font-family: var(--font-ui); transition: background .12s; }
   .slash-item:hover, .slash-item.sel { background: var(--primary-dim); }
-  .slash-item .ic { width: 24px; text-align: center; }
+  .slash-item .ic { width: 24px; display: flex; align-items: center; justify-content: center; color: var(--content-2); flex-shrink: 0; }
   .slash-item .cmd { font-family: var(--font-mono); color: var(--primary); font-size: 12px; min-width: 90px; }
   .slash-item .desc { flex: 1; color: var(--content-2); font-size: 12px; }
 
@@ -293,7 +298,7 @@
     <div id="attach-prev">
       <img id="attach-img" alt="Lampiran">
       <span class="meta" id="attach-meta"></span>
-      <button class="x" onclick="clearAttach()" title="Hapus lampiran">✕</button>
+      <button class="x" onclick="clearAttach()" title="Hapus lampiran" aria-label="Hapus lampiran"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div id="composer">
       <textarea id="input" rows="1" placeholder="What do you want to build?"></textarea>
@@ -335,14 +340,15 @@ const topbarTitle = document.getElementById('topbar-title');
 
 const FALLBACK_MODELS = ['gpt-5-nano', 'gpt-4o-mini', 'claude-sonnet-4', 'gemini-2.5-flash', 'deepseek-chat', 'grok-4'];
 const SYSTEM_PROMPT = 'Anda adalah MiniDevin. Jika pengguna bertanya siapa Anda atau siapa kamu, jawab bahwa Anda adalah MiniDevin — AI software engineer. Bantu pengguna menulis, menjelaskan, dan memperbaiki kode. Jawab ringkas dalam Bahasa Indonesia kecuali diminta lain. Kode selalu dalam blok markdown dengan bahasa yang jelas.';
+const svg = (paths, w = 14) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="${w}" height="${w}">${paths}</svg>`;
 const COMMANDS = [
-  { cmd: '/gambar', icon: '🎨', desc: 'Buat gambar dari deskripsi teks' },
-  { cmd: '/kode', icon: '💻', desc: 'Minta bantuan menulis atau memperbaiki kode' },
-  { cmd: '/jelaskan', icon: '💡', desc: 'Penjelasan mendalam tentang sebuah konsep' },
-  { cmd: '/terjemahkan', icon: '🌐', desc: 'Terjemahkan teks ke bahasa lain' },
-  { cmd: '/rangkum', icon: '📝', desc: 'Ringkas teks panjang menjadi poin utama' },
-  { cmd: '/ulas', icon: '🔍', desc: 'Review kode: bug, performa, praktik terbaik' },
-  { cmd: '/berkas', icon: '📎', desc: 'Lampirkan gambar untuk dianalisis AI' }
+  { cmd: '/gambar', icon: svg('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>'), desc: 'Buat gambar dari deskripsi teks' },
+  { cmd: '/kode', icon: svg('<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>'), desc: 'Minta bantuan menulis atau memperbaiki kode' },
+  { cmd: '/jelaskan', icon: svg('<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>'), desc: 'Penjelasan mendalam tentang sebuah konsep' },
+  { cmd: '/terjemahkan', icon: svg('<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>'), desc: 'Terjemahkan teks ke bahasa lain' },
+  { cmd: '/rangkum', icon: svg('<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>'), desc: 'Ringkas teks panjang menjadi poin utama' },
+  { cmd: '/ulas', icon: svg('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'), desc: 'Review kode: bug, performa, praktik terbaik' },
+  { cmd: '/berkas', icon: svg('<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>'), desc: 'Lampirkan gambar untuk dianalisis AI' }
 ];
 let conversations = {};
 let currentId = null;
@@ -692,7 +698,7 @@ function renderSlash(filter) {
     const b = document.createElement('button');
     b.className = 'slash-item' + (i === slashSel ? ' sel' : '');
     b.innerHTML = '<span class="ic"></span><span class="cmd"></span><span class="desc"></span>';
-    b.querySelector('.ic').textContent = c.icon;
+    b.querySelector('.ic').innerHTML = c.icon; // svg literal string — safe
     b.querySelector('.cmd').textContent = c.cmd;
     b.querySelector('.desc').textContent = c.desc;
     b.onmousedown = (e) => { e.preventDefault(); applyCommand(c); };
@@ -742,7 +748,19 @@ async function send() {
     topbarTitle.textContent = (text || attachData.name).slice(0, 50);
   }
   showHome(false);
-  addMsg('user', text + (attachData ? '\n📎 ' + attachData.name : ''));
+  // Lampiran dirender sebagai baris khusus, bukan emoji 📎 di teks
+  {
+    const body = addMsg('user', text);
+    if (attachData) {
+      const chip = document.createElement('div');
+      chip.className = 'attach-row';
+      chip.innerHTML = '<span class="ic"></span><img alt="lampiran"><span class="nm"></span>';
+      chip.querySelector('.ic').innerHTML = COMMANDS.find(c => c.cmd === '/berkas').icon;
+      chip.querySelector('img').src = attachData.dataUrl;
+      chip.querySelector('.nm').textContent = attachData.name;
+      body.appendChild(chip);
+    }
+  }
   const userMsg = { role: 'user', content: text || 'Analisis gambar ini.' };
   if (attachData) userMsg.image = attachData.dataUrl;
   conversations[currentId].messages.push(userMsg);
