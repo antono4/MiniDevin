@@ -444,7 +444,8 @@ const exportBtn = document.getElementById('export-btn');
 // Lucide "bot" — menggantikan emoji 🤖 agar tampil tajam di semua platform
 const BOT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>';
 let mdPreview = false; // toggle live preview markdown di input
-const USER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+// BOT_ICON dipakai sebagai MODEL_ICON agar konsisten
+const MODEL_ICON = BOT_ICON;
 
 async function deleteSelected() {
   if (!Object.keys(conversations).length) return;
@@ -628,13 +629,13 @@ async function loadModels() {
   const saved = localStorage.getItem('minidevin_model');
   modelSelect.value = saved && models.includes(saved) ? saved : models[0];
   modelSelect.title = 'Model: ' + modelSelect.value;
-  modelChip.innerHTML = MODEL_ICON + '<span>' + modelSelect.value + '</span>';
+  modelChip.innerHTML = BOT_ICON + '<span>' + modelSelect.value + '</span>';
   modelChip.title = 'Model aktif: ' + modelSelect.value;
 }
 modelSelect.onchange = () => {
   localStorage.setItem('minidevin_model', modelSelect.value);
   modelSelect.title = 'Model: ' + modelSelect.value;
-  modelChip.innerHTML = MODEL_ICON + '<span>' + modelSelect.value + '</span>';
+  modelChip.innerHTML = BOT_ICON + '<span>' + modelSelect.value + '</span>';
   modelChip.title = 'Model aktif: ' + modelSelect.value;
 };
 
@@ -1066,6 +1067,8 @@ input.addEventListener('input', () => {
 (async () => {
   renderThemeIcon();
   refreshAuth();
+  // set chip model awal agar terlihat sebelum daftar model selesai dimuat
+  modelChip.innerHTML = BOT_ICON + '<span>' + (localStorage.getItem('minidevin_model') || FALLBACK_MODELS[0]) + '</span>';
   await loadModels();
   await loadConversations();
   showHome(true);
