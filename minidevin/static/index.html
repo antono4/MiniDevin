@@ -351,7 +351,8 @@ let abortRequested = false;
 const modelChip = document.getElementById('model-chip');
 const exportBtn = document.getElementById('export-btn');
 // Lucide "bot" — menggantikan emoji 🤖 agar tampil tajam di semua platform
-const MODEL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>';
+const BOT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>';
+const USER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
 
 function md(text) {
   try {
@@ -373,8 +374,10 @@ function addMsg(role, text, isMd) {
     img.src = 'minidevin.png'; img.alt = 'MiniDevin';
     img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'cover';
     av.appendChild(img);
+  } else if (role === 'user') {
+    av.innerHTML = USER_ICON;
   } else {
-    av.textContent = role === 'user' ? '👤' : '⚠';
+    av.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>';
   }
   const body = document.createElement('div');
   body.className = 'body';
