@@ -98,3 +98,10 @@ def test_markdown_toggle_present():
     src = INDEX.read_text(encoding='utf-8')
     assert 'md-toggle' in src
     assert 'md-preview-box' in src or 'mdPreview' in src
+
+
+def test_compare_button_present():
+    src = INDEX.read_text(encoding='utf-8')
+    assert 'compare-btn' in src
+    assert 'compareModels' in src
+    assert 'compareModelsAgainst' in src

@@ -198,6 +198,11 @@ async function run() {
     assert.ok(preview === 1, 'preview box not created');
   });
 
+  await test('compare button exists', async (p) => {
+    const count = await p.locator('#compare-btn').count();
+    assert.ok(count === 1, 'compare button missing');
+  });
+
   await test('toggle theme persists preference', async (p) => {
     await p.click('#theme-btn');
     const theme = await p.getAttribute('html', 'data-theme');

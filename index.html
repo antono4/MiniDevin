@@ -353,6 +353,9 @@
           </svg>
         </button>
         <button id="send-btn" onclick="send()" title="Kirim" aria-label="Kirim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+        <button id="compare-btn" class="svg-btn" onclick="compareModels()" title="Bandingkan 2 model" aria-label="Bandingkan model">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        </button>
       </div>
     </div>
   </div>
@@ -387,6 +390,55 @@ let conversations = {};
 let currentId = null;
 let busy = false;
 let abortRequested = false;
+async function compareModelsAgainst(list) {
+  if ((list || []).length !== 2) return;
+  const text = input.value.trim();
+  if (!text) return;
+  if (!currentId) {
+    currentId = uid();
+    conversations[currentId] = { title: text.slice(0, 50), messages: [] };
+    topbarTitle.textContent = text.slice(0, 50);
+  }
+  showHome(false);
+  addMsg('user', text);
+  conversations[currentId].messages.push({ role: 'user', content: text });
+  renderConvoList();
+  setBusy(true);
+  const prev = modelSelect.value;
+  try {
+    for (const model of list) {
+      const body = addMsg('ai', 'Model: ' + model);
+      let full = '';
+      try {
+        const messages = [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: text }
+        ];
+        for await (const part of await puter.ai.chat(messages, { model, stream: true })) {
+          if (part?.text) full += part.text;
+        }
+        body.innerHTML = `**_${model}_**\n\n` + md(full);
+      } catch (e) {
+        body.innerHTML = `**_${model}_**\n\n*Gagal: ${e.message || e}*`;
+      }
+      conversations[currentId].messages.push({ role: 'assistant', content: '(' + model + ')\n\n' + full });
+    }
+  } finally {
+    modelSelect.value = prev;
+    setBusy(false);
+    await saveConversations();
+  }
+}
+
+function compareModels() {
+  if ((modelSelect.options.length) < 2) { alert('Pilih minimal 2 model.'); return; }
+  const first = modelSelect.value;
+  let second;
+  modelSelect.querySelectorAll('option').forEach((o, i) => {
+    if (o.value !== first && !second) second = o.value;
+  });
+  compareModelsAgainst([first, second]);
+}
 const modelChip = document.getElementById('model-chip');
 const exportBtn = document.getElementById('export-btn');
 // Lucide "bot" — menggantikan emoji 🤖 agar tampil tajam di semua platform
