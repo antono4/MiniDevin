@@ -153,14 +153,17 @@
   .mini-toggle { display: flex; align-items: center; gap: 6px; color: var(--content-2); font-size: 12px; cursor: pointer; }
   .mini-toggle input { accent-color: var(--primary); }
   .hint-text { font-size: 11px; color: var(--content-3); }
-  #mic-btn {
-    width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--border);
-    background: none; color: var(--content-2); font-size: 15px; cursor: pointer;
-    display: none; align-items: center; justify-content: center; transition: background .12s, color .12s;
+  .svg-btn {
+    width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--border);
+    background: none; color: var(--content-2); cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .12s, color .12s, border-color .12s, transform .12s;
   }
-  #mic-btn:hover { background: var(--base-tertiary); color: var(--content); }
-  #mic-btn.recording { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); animation: micpulse 1.2s infinite; }
-  @keyframes micpulse { 50% { box-shadow: 0 0 0 5px rgba(229, 72, 77, .18); } }
+  .svg-btn svg { display: block; }
+  .svg-btn:hover { background: var(--base-tertiary); color: var(--content); border-color: var(--primary); transform: translateY(-1px); }
+  #mic-btn { display: none; }
+  #mic-btn.recording { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); animation: micpulse 1.4s ease-out infinite; }
+  @keyframes micpulse { 0% { box-shadow: 0 0 0 0 rgba(229,72,77,.35) } 100% { box-shadow: 0 0 0 12px rgba(229,72,77,0) } }
   #send-btn {
     margin-left: auto; width: 36px; height: 36px; border-radius: 9px; border: none;
     background: var(--primary); color: #0d0f12; font-size: 15px; cursor: pointer;
@@ -178,8 +181,6 @@
   #attach-prev .meta { flex: 1; min-width: 0; font-size: 12px; color: var(--content-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #attach-prev .x { background: none; border: none; color: var(--content-3); cursor: pointer; font-size: 15px; padding: 4px 6px; border-radius: 6px; }
   #attach-prev .x:hover { background: var(--error-bg); color: var(--error-border); }
-  #attach-btn { width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--border); background: none; color: var(--content-2); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .12s, color .12s; }
-  #attach-btn:hover { background: var(--base-tertiary); color: var(--content); }
   .msg.ai .body { position: relative; }
   .msg .tools { position: absolute; top: -13px; right: 0; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
   .msg.ai:hover .tools { opacity: 1; }
@@ -298,11 +299,23 @@
       <textarea id="input" rows="1" placeholder="What do you want to build?"></textarea>
       <div class="row">
         <input type="file" id="attach-input" accept="image/*" style="display:none">
-        <button id="attach-btn" onclick="document.getElementById('attach-input').click()" title="Lampirkan gambar">📎</button>
+        <button id="attach-btn" class="svg-btn" onclick="document.getElementById('attach-input').click()" title="Lampirkan gambar" aria-label="Lampirkan gambar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <path d="M21 8l-5.27-5.27a2 2 0 0 0-2.83 0L4.05 15.76a6 6 0 1 0 8.49 8.49L21 8z"/>
+            <path d="M12 12l-3.5 3.5"/>
+          </svg>
+        </button>
         <select class="model" id="model-select" title="Model AI"></select>
         <label class="mini-toggle"><input type="checkbox" id="stream-mode" checked> ⚡ Stream</label>
         <span class="hint-text">Enter ↵ kirim · Shift+Enter baris baru</span>
-        <button id="mic-btn" onclick="toggleMic()" title="Input suara">🎤</button>
+        <button id="mic-btn" class="svg-btn" onclick="toggleMic()" title="Input suara" aria-label="Input suara">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <rect x="9" y="2" width="6" height="11" rx="3"/>
+            <path d="M5 10v2a7 7 0 0 0 14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
         <button id="send-btn" onclick="send()" title="Kirim">➤</button>
       </div>
     </div>
