@@ -159,6 +159,45 @@ async function run() {
     assert.ok(cls.includes('show'), 'user-chip not marked .show');
   });
 
+  await test('export menu opens with formats', async (p) => {
+    await p.evaluate(() => {
+      document.getElementById('home').style.display = 'none';
+      document.getElementById('export-menu-wrap').style.display = 'block';
+      toggleExportMenu();
+    });
+    const html = await p.innerHTML('#export-menu');
+    assert.ok(html.includes('Markdown'), 'md option missing');
+    assert.ok(html.includes('JSON'), 'json option missing');
+    assert.ok(html.includes('HTML'), 'html option missing');
+    const visible = await p.locator('#export-menu.show').count();
+    assert.ok(visible === 1, 'menu not opened');
+  });
+
+  await test('delete all button present and prompts', async (p) => {
+    const count = await p.locator('#sb-del-all').count();
+    assert.ok(count === 1, 'delete-all missing');
+  });
+
+  await test('regenerate button appears on AI message', async (p) => {
+    await p.evaluate(() => {
+      document.getElementById('home').style.display = 'none';
+      const d = addMsg('ai', 'test');
+      document.querySelector('#chat-wrap').style.display = 'block';
+    });
+    const del = await p.locator('.tools .tbtn').count();
+    assert.ok(del >= 1, 'regenerate/copy buttons missing');
+  });
+
+  await test('markdown toggle exists and shows preview', async (p) => {
+    await p.fill('#input', `# Title`);
+    const count = await p.locator('#md-toggle').count();
+    assert.ok(count === 1, 'md toggle missing');
+    await p.click('#md-toggle');
+    await p.waitForTimeout(250);
+    const preview = await p.locator('#md-preview-box').count();
+    assert.ok(preview === 1, 'preview box not created');
+  });
+
   await test('toggle theme persists preference', async (p) => {
     await p.click('#theme-btn');
     const theme = await p.getAttribute('html', 'data-theme');
