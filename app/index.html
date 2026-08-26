@@ -721,10 +721,20 @@ async function send() {
   abortRequested = false;
   setBusy(true);
   const model = modelSelect.value;
+  // Lampirkan gambar langsung ke messages agar vision models (Puter/Qwen-VL)
+  // betul-betul "melihat" gambar — sebelumnya hanya terkirim via opts.image
+  // sehingga model menjawab "Saya tidak melihat gambar apa pun".
+  const lastIdx = conversations[currentId].messages.length - 1;
+  if (hadAttach && lastIdx >= 0 && conversations[currentId].messages[lastIdx].role === 'user') {
+    const m = conversations[currentId].messages[lastIdx];
+    m.content = [
+      { type: 'text', text: typeof m.content === 'string' ? m.content + '\n' : 'Analisis gambar ini.' },
+      { type: 'image_url', image_url: { url: hadAttach.dataUrl } }
+    ];
+  }
   const history = conversations[currentId].messages.slice(-20).map(m => ({ role: m.role, content: m.content }));
   const messages = [{ role: 'system', content: SYSTEM_PROMPT }, ...history];
   const opts = { model };
-  if (hadAttach) opts.image = hadAttach.dataUrl;
 
   const consumeStream = async (body) => {
     let full = '';
