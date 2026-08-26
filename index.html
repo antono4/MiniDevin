@@ -446,6 +446,8 @@ const BOT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 let mdPreview = false; // toggle live preview markdown di input
 // BOT_ICON dipakai sebagai MODEL_ICON agar konsisten
 const MODEL_ICON = BOT_ICON;
+// Lucide "user" — avatar pesan pengguna
+const USER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
 
 async function deleteSelected() {
   if (!Object.keys(conversations).length) return;
