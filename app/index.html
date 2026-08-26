@@ -414,7 +414,7 @@ async function compareModelsAgainst(list) {
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: text }
         ];
-        for await (const part of await puter.ai.chat(messages, { model, stream: true })) {
+        for await (const part of guardedStream(await withTimeout(puter.ai.chat(messages, { model, stream: true })))) {
           if (part?.text) full += part.text;
         }
         body.innerHTML = `**_${model}_**\n\n` + md(full);
@@ -472,8 +472,8 @@ async function regenerateResponse() {
   try {
     const body = addMsg('ai', '');
     let full = '';
-    const resp = await puter.ai.chat(messages, { model: modelSelect.value, stream: true });
-    for await (const part of resp) {
+    const resp = await withTimeout(puter.ai.chat(messages, { model: modelSelect.value, stream: true }));
+    for await (const part of guardedStream(resp)) {
       if (abortRequested) break;
       if (part?.text) { full += part.text; body.innerHTML = md(full) + '<span class="cursor"></span>'; scrollChat(); }
     }
@@ -498,6 +498,24 @@ function md(text) {
 }
 function scrollChat() { chatWrap.scrollTop = chatWrap.scrollHeight; }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+// Puter kadang menggantung tanpa error (mis. sesi login kedaluwarsa) — tanpa
+// timeout indikator "working" tampil selamanya dan UI macet.
+const AI_TIMEOUT_MS = 60000;
+function withTimeout(promise, ms = AI_TIMEOUT_MS) {
+  return Promise.race([
+    promise,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('Waktu tunggu habis (' + Math.round(ms / 1000) + ' detik). Silakan coba lagi.')), ms))
+  ]);
+}
+async function* guardedStream(iterable, ms = AI_TIMEOUT_MS) {
+  const it = iterable[Symbol.asyncIterator]();
+  while (true) {
+    const { value, done } = await withTimeout(it.next(), ms);
+    if (done) break;
+    yield value;
+  }
+}
 
 function addMsg(role, text, isMd) {
   const d = document.createElement('div');
@@ -900,7 +918,7 @@ async function generateImage(prompt) {
   setBusy(true);
   typing.innerHTML = '<span class="spin"></span><span>Generating image…</span>';
   try {
-    const img = await puter.ai.txt2img(prompt);
+    const img = await withTimeout(puter.ai.txt2img(prompt));
     const body = addMsg('ai', '');
     body.innerHTML = '<div><b></b></div>';
     body.querySelector('b').textContent = prompt;
@@ -975,8 +993,8 @@ async function send() {
 
   const consumeStream = async (body) => {
     let full = '';
-    const resp = await puter.ai.chat(messages, { ...opts, stream: true });
-    for await (const part of resp) {
+    const resp = await withTimeout(puter.ai.chat(messages, { ...opts, stream: true }));
+    for await (const part of guardedStream(resp)) {
       if (abortRequested) break;
       if (part?.text) {
         full += part.text;
@@ -1001,7 +1019,7 @@ async function send() {
       let textOut;
       let usedStreamBody = false;
       try {
-        const resp = await puter.ai.chat(messages, opts);
+        const resp = await withTimeout(puter.ai.chat(messages, opts));
         const content = resp?.message?.content ?? resp?.text ?? String(resp);
         textOut = Array.isArray(content) ? content.map(c => c.text || '').join('') : content;
       } catch (e) {
