@@ -51,6 +51,14 @@ def test_chat_avatar_user_is_svg():
     assert "'👤'" not in src
 
 
+def test_user_chip_toggle_with_show_class():
+    src = INDEX.read_text(encoding='utf-8')
+    assert re.search(r"#user-chip\.show\s*\{[^}]*display", src, re.S), \
+        'user-chip .show rule missing'
+    assert 'classList.add(\'show\')' in src, 'refreshAuth must toggle show class'
+    assert '👤' not in src, 'emoji user in chip still present'
+
+
 def test_close_attachment_button_is_svg():
     src = INDEX.read_text(encoding='utf-8')
     assert re.search(r'<button class="x".*?<svg', src, re.S), \

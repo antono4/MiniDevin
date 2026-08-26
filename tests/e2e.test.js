@@ -137,6 +137,28 @@ async function run() {
     assert.ok(vision, 'vision format missing in messages');
   });
 
+  await test('user chip renders Lucide user icon when signed in', async (p) => {
+    await p.evaluate(async () => {
+      window.puter = {
+        auth: {
+          isSignedIn: () => true,
+          getUser: async () => ({ username: 'budi' }),
+          signIn: async () => {},
+          signOut: async () => {}
+        },
+        ai: { listModels: async () => [] },
+        kv: {}
+      };
+      await refreshAuth();
+    });
+    const html = await p.innerHTML('#user-chip');
+    assert.ok(html.includes('<svg'), 'user icon missing');
+    assert.ok(!html.includes('👤'), 'emoji user still in chip');
+    assert.ok(html.includes('budi'), 'username not in chip');
+    const cls = await p.getAttribute('#user-chip', 'class');
+    assert.ok(cls.includes('show'), 'user-chip not marked .show');
+  });
+
   await test('toggle theme persists preference', async (p) => {
     await p.click('#theme-btn');
     const theme = await p.getAttribute('html', 'data-theme');

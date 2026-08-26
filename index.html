@@ -85,6 +85,8 @@
   .icon-btn:hover { background: var(--base-tertiary); color: var(--content); }
   .spacer { flex: 1; }
   #user-chip { font-size: 12px; color: var(--primary); background: var(--primary-dim); border-radius: 20px; padding: 5px 12px; display: none; font-weight: 600; }
+  #user-chip.show { display: inline-flex; align-items: center; gap: 6px; }
+  #user-chip svg { width: 13px; height: 13px; display: block; }
 
   /* ---------- home ---------- */
   #home { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; position: relative; }
@@ -512,12 +514,12 @@ async function refreshAuth() {
     if (puter.auth.isSignedIn()) {
       const u = await puter.auth.getUser();
       const chip = document.getElementById('user-chip');
-      chip.style.display = '';
-      chip.textContent = '👤 ' + u.username;
+      chip.classList.add('show');
+      chip.innerHTML = ICONS.user + '<span>' + u.username + '</span>';
       authBtn.innerHTML = ICONS.logout;
       authBtn.title = 'Keluar (' + u.username + ')';
     } else {
-      document.getElementById('user-chip').style.display = 'none';
+      document.getElementById('user-chip').classList.remove('show');
       authBtn.innerHTML = ICONS.login;
       authBtn.title = 'Masuk dengan Puter';
     }
