@@ -524,10 +524,30 @@ async function send() {
       addCopyButtons(body);
       conversations[currentId].messages.push({ role: 'assistant', content: full });
     } else {
-      const resp = await puter.ai.chat(messages, { model });
-      const content = resp?.message?.content ?? resp?.text ?? String(resp);
-      const textOut = Array.isArray(content) ? content.map(c => c.text || '').join('') : content;
-      addMsg('ai', textOut, true);
+      let textOut, usedStreamBody = false;
+      try {
+        const resp = await puter.ai.chat(messages, { model });
+        const content = resp?.message?.content ?? resp?.text ?? String(resp);
+        textOut = Array.isArray(content) ? content.map(c => c.text || '').join('') : content;
+      } catch (e) {
+        const msg = String(e?.message || e);
+        if (!/does not support http call|only support stream/i.test(msg)) throw e;
+        // Model hanya mendukung streaming (mis. Qwen/DashScope) — coba ulang dengan stream
+        const body = addMsg('ai', '');
+        usedStreamBody = true;
+        textOut = '';
+        const resp = await puter.ai.chat(messages, { model, stream: true });
+        for await (const part of resp) {
+          if (part?.text) {
+            textOut += part.text;
+            body.innerHTML = md(textOut) + '<span class="cursor"></span>';
+            scrollChat();
+          }
+        }
+        body.innerHTML = md(textOut);
+        addCopyButtons(body);
+      }
+      if (!usedStreamBody) addMsg('ai', textOut, true);
       conversations[currentId].messages.push({ role: 'assistant', content: textOut });
     }
   } catch (e) {

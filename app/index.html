@@ -726,29 +726,47 @@ async function send() {
   const opts = { model };
   if (hadAttach) opts.image = hadAttach.dataUrl;
 
-  try {
-    if (streamMode.checked && !hadAttach) {
-      const body = addMsg('ai', '');
-      let full = '';
-      const resp = await puter.ai.chat(messages, { model, stream: true });
-      for await (const part of resp) {
-        if (abortRequested) break;
-        if (part?.text) {
-          full += part.text;
-          body.innerHTML = md(full) + '<span class="cursor"></span>';
-          scrollChat();
-        }
+  const consumeStream = async (body) => {
+    let full = '';
+    const resp = await puter.ai.chat(messages, { ...opts, stream: true });
+    for await (const part of resp) {
+      if (abortRequested) break;
+      if (part?.text) {
+        full += part.text;
+        body.innerHTML = md(full) + '<span class="cursor"></span>';
+        scrollChat();
       }
-      if (abortRequested) full += '\n\n_⏹ Dihentikan pengguna._';
-      body.innerHTML = md(full);
-      addCopyButtons(body);
+    }
+    if (abortRequested) full += '\n\n_⏹ Dihentikan pengguna._';
+    body.innerHTML = md(full);
+    addCopyButtons(body);
+    return full;
+  };
+
+  try {
+    // Streaming wajib untuk model Qwen/DashScope (Puter) — non-stream ditolak
+    // dengan "400 current user api does not support http call".
+    if (streamMode.checked || hadAttach) {
+      const body = addMsg('ai', '');
+      const full = await consumeStream(body);
       conversations[currentId].messages.push({ role: 'assistant', content: full });
     } else {
-      const resp = await puter.ai.chat(messages, opts);
-      const content = resp?.message?.content ?? resp?.text ?? String(resp);
-      let textOut = Array.isArray(content) ? content.map(c => c.text || '').join('') : content;
+      let textOut;
+      let usedStreamBody = false;
+      try {
+        const resp = await puter.ai.chat(messages, opts);
+        const content = resp?.message?.content ?? resp?.text ?? String(resp);
+        textOut = Array.isArray(content) ? content.map(c => c.text || '').join('') : content;
+      } catch (e) {
+        const msg = String(e?.message || e);
+        if (/does not support http call|only support stream/i.test(msg)) {
+          const body = addMsg('ai', '');
+          usedStreamBody = true;
+          textOut = await consumeStream(body);
+        } else throw e;
+      }
       if (abortRequested) textOut += '\n\n_⏹ Dihentikan pengguna._';
-      addMsg('ai', textOut, true);
+      if (!usedStreamBody) addMsg('ai', textOut, true);
       conversations[currentId].messages.push({ role: 'assistant', content: textOut });
     }
   } catch (e) {
