@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  },
+  "scripts": {
+    "test": "node tests/e2e.test.js",
+    "test:static": "python3 -m pytest tests/test_static.py tests/test_backend.py -q",
+    "test:py": "python3 -m pytest tests/ -q --ignore=tests/e2e.test.js"
+  }
+}
