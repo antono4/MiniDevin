@@ -107,14 +107,8 @@ def test_compare_button_present():
     assert 'compareModelsAgainst' in src
 
 
-def test_github_login_present():
+def test_puter_only_login():
     src = INDEX.read_text(encoding='utf-8')
-    assert 'githubLogin' in src
-    assert 'auth-menu' in src
-    assert 'gh_token' in src
-
-
-def test_auth_storage_split_present():
-    src = INDEX.read_text(encoding='utf-8')
-    assert 'storageKey' in src
-    assert 'minidevin_convos_gh' in src
+    assert 'githubLogin' not in src, 'githubLogin still present'
+    assert 'minidevin_convos_gh' not in src, 'gh split still present'
+    assert 'puter.auth' in src or 'toggleAuth' in src
