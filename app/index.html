@@ -268,7 +268,7 @@
   <div id="topbar">
     <button class="icon-btn" onclick="toggleSidebar()" title="Sidebar">☰</button>
     <span id="topbar-title" style="font-size:14px;font-weight:600;color:var(--content-2)">New conversation</span>
-    <span id="model-chip" style="font-size:11px;color:var(--content-3);background:var(--base-tertiary);border-radius:12px;padding:3px 10px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <span id="model-chip" style="font-size:11px;color:var(--content-3);background:var(--base-tertiary);border-radius:12px;padding:3px 10px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex;align-items:center;gap:5px"></span>
     <span class="spacer"></span>
     <button class="icon-btn" id="export-btn" onclick="exportChat('md')" title="Ekspor chat sebagai Markdown" style="display:none">📥</button>
   </div>
@@ -350,6 +350,8 @@ let busy = false;
 let abortRequested = false;
 const modelChip = document.getElementById('model-chip');
 const exportBtn = document.getElementById('export-btn');
+// Lucide "bot" — menggantikan emoji 🤖 agar tampil tajam di semua platform
+const MODEL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>';
 
 function md(text) {
   try {
@@ -486,13 +488,13 @@ async function loadModels() {
   const saved = localStorage.getItem('minidevin_model');
   modelSelect.value = saved && models.includes(saved) ? saved : models[0];
   modelSelect.title = 'Model: ' + modelSelect.value;
-  modelChip.textContent = '🤖 ' + modelSelect.value;
+  modelChip.innerHTML = MODEL_ICON + '<span>' + modelSelect.value + '</span>';
   modelChip.title = 'Model aktif: ' + modelSelect.value;
 }
 modelSelect.onchange = () => {
   localStorage.setItem('minidevin_model', modelSelect.value);
   modelSelect.title = 'Model: ' + modelSelect.value;
-  modelChip.textContent = '🤖 ' + modelSelect.value;
+  modelChip.innerHTML = MODEL_ICON + '<span>' + modelSelect.value + '</span>';
   modelChip.title = 'Model aktif: ' + modelSelect.value;
 };
 
