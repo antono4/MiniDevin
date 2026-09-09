@@ -12,275 +12,45 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --background: #0b0f14;
-    --base-secondary: #12161c;
-    --base-tertiary: #1a2029;
-    --border: #232b37;
-    --content: #e6e9ec;
-    --content-2: #929eab;
-    --content-3: #5d6773;
-    --primary: #c3f73a;
-    --primary-dim: rgba(195, 247, 58, .12);
-    --primary-glow: rgba(195, 247, 58, .25);
-    --error-bg: #2a1618; --error-border: #e5484d; --error-text: #ff9aa0;
-    --radius: 14px;
-    --font-ui: 'Open Sans', system-ui, sans-serif;
-    --font-mono: 'Fira Code', monospace;
-  }
-  [data-theme="light"] {
-    --background: #f6f7f4;
-    --base-secondary: #ffffff;
-    --base-tertiary: #ecf0e7;
-    --border: #dbe2d6;
-    --content: #1b2027;
-    --content-2: #5a6673;
-    --content-3: #8a95a2;
-    --primary: #6fab06;
-    --primary-dim: rgba(111, 171, 6, .1);
-    --primary-glow: rgba(111, 171, 6, .2);
-    --error-bg: #fdecec; --error-border: #d92d20; --error-text: #b42318;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; }
-  body { font-family: var(--font-ui); background: var(--background); color: var(--content); display: flex; overflow: hidden; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-  body::before {
-    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-    background: radial-gradient(1200px 600px at 80% -10%, rgba(195,247,58,.05), transparent),
-                        radial-gradient(900px 500px at -10% 110%, rgba(88,144,255,.04), transparent);
-  }
-
-  /* ---------- sidebar ---------- */
-  #sidebar { width: 264px; background: var(--base-secondary); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; transition: margin-left .25s cubic-bezier(.4,0,.2,1); position: relative; z-index: 5; }
-  #sidebar.hidden { margin-left: -264px; }
-  .sb-head { padding: 18px 18px 14px; display: flex; align-items: center; gap: 10px; }
-  .logo-mark { width: 38px; height: 38px; border-radius: 12px; overflow: hidden; box-shadow: 0 0 16px var(--primary-glow); position: relative; }
-  .logo-mark img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .sb-head .name { font-weight: 700; font-size: 16px; letter-spacing: .2px; }
-  .sb-head .tag { font-size: 10px; color: var(--content-3); letter-spacing: 1.4px; text-transform: uppercase; }
-  .sb-new {
-    margin: 4px 16px 12px; background: var(--primary); color: #0d0f12;
-    border: none; border-radius: 10px; padding: 11px; font-size: 13px; cursor: pointer; font-weight: 700;
-    font-family: var(--font-ui); transition: filter .15s, transform .15s, box-shadow .15s;
-  }
-  .sb-new:hover { filter: brightness(1.08); box-shadow: 0 4px 14px var(--primary-glow); }
-  .sb-label { padding: 4px 20px 8px; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--content-3); display: flex; align-items: center; justify-content: space-between; }
-  .sb-label button { background: none; border: none; color: var(--content-3); cursor: pointer; font-size: 11px; }
-  .sb-label button:hover { color: var(--error-border); }
-  #convo-list { flex: 1; overflow-y: auto; padding: 0 10px; }
-  .convo { padding: 9px 12px; border-radius: 8px; font-size: 13px; color: var(--content-2); cursor: pointer; display: flex; align-items: center; gap: 8px; margin-bottom: 2px; transition: background .12s, color .12s; }
-  .convo:hover { background: var(--base-tertiary); color: var(--content); }
-  .convo.active { background: var(--primary-dim); color: var(--content); border-left: 2px solid var(--primary); padding-left: 10px; }
-  .convo .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .convo .d, .convo .r { background: none; border: none; color: var(--content-3); cursor: pointer; visibility: hidden; font-size: 12px; padding: 2px; transition: color .12s; }
-  .convo .d { color: var(--error-border); }
-  .convo:hover .d, .convo:hover .r { visibility: visible; }
-  .sb-foot { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 4px; align-items: center; background: linear-gradient(180deg, transparent, rgba(0,0,0,.18)); }
-  .sb-foot .icon-btn { font-size: 15px; }
-
-  /* ---------- main ---------- */
-  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; z-index: 1; }
-  #topbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); backdrop-filter: blur(8px); }
-  .icon-btn { background: none; border: 1px solid transparent; color: var(--content-2); font-size: 15px; cursor: pointer; padding: 6px 8px; border-radius: 8px; transition: background .12s, color .12s; font-family: var(--font-ui); }
-  .icon-btn svg { width: 17px; height: 17px; display: block; }
-  .icon-btn:hover { background: var(--base-tertiary); color: var(--content); }
-  .spacer { flex: 1; }
-  #user-chip { font-size: 12px; color: var(--primary); background: var(--primary-dim); border-radius: 20px; padding: 5px 12px; display: none; font-weight: 600; }
-  #user-chip.show { display: inline-flex; align-items: center; gap: 6px; }
-  #user-chip svg { width: 13px; height: 13px; display: block; }
-
-  /* ---------- home ---------- */
-  #home { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; position: relative; }
-  .orb { position: absolute; top: 50%; width: min(560px, 80vw); height: min(560px, 80vw); background: radial-gradient(circle, var(--primary-glow), transparent 58%); filter: blur(40px); animation: orb 14s ease-in-out infinite alternate; pointer-events: none; }
-  @keyframes orb { from { transform: translateY(-70%) scale(.9) rotate(0deg); } to { transform: translateY(-50%) scale(1.1) rotate(360deg); } }
-  .home-logo { width: 96px; height: 96px; border-radius: 24px; overflow: hidden; margin-bottom: 22px; border: 1px solid var(--border); box-shadow: 0 10px 42px rgba(0,0,0,.4), 0 0 0 4px rgba(0,0,0,.15), 0 0 24px var(--primary-glow); position: relative; z-index: 1; animation: float 4.5s ease-in-out infinite; }
-  .home-logo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(255,255,255,.18), transparent 52%); pointer-events: none; border-radius: inherit; }
-  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-  .home-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  #home h2 { font-size: clamp(30px, 5vw, 42px); font-weight: 700; margin-bottom: 14px; text-align: center; letter-spacing: -.6px; position: relative; z-index: 1; }
-  #home p.sub { color: var(--content-2); font-size: 14.5px; margin-bottom: 36px; text-align: center; max-width: 540px; line-height: 1.65; position: relative; z-index: 1; }
-  #suggests { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; max-width: 680px; width: 100%; position: relative; z-index: 1; }
-  .sugg {
-    background: linear-gradient(180deg, var(--base-secondary), var(--base-tertiary));
-    border: 1px solid var(--border); border-radius: 12px; padding: 15px 17px;
-    font-size: 13px; color: var(--content-2); cursor: pointer; text-align: left; font-family: var(--font-ui);
-    transition: border-color .2s, color .2s, transform .2s, box-shadow .2s; line-height: 1.55; position: relative;
-  }
-  .sugg::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(140deg, var(--primary) 0%, transparent 40%); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; transition: opacity .25s; }
-  .sugg:hover { border-color: transparent; color: var(--content); transform: translateY(-3px); box-shadow: 0 8px 26px rgba(0,0,0,.35); }
-  .sugg:hover::before { opacity: 1; }
-
-  /* ---------- chat ---------- */
-  #chat-wrap { flex: 1; overflow-y: auto; display: none; scroll-behavior: smooth; }
-  #chat { max-width: 790px; margin: 0 auto; padding: 26px 26px 12px; display: flex; flex-direction: column; gap: 22px; }
-  .msg { display: flex; gap: 12px; line-height: 1.65; font-size: 14.5px; word-break: break-word; animation: msgIn .25s ease-out; }
-  @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-  .msg .avatar { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; font-weight: 700; }
-  .msg.user .avatar { background: var(--base-tertiary); border: 1px solid var(--border); color: var(--content); }
-  .msg.ai .avatar { background: var(--primary); color: #0d0f12; }
-  .msg.error .avatar { background: var(--error-bg); border: 1px solid var(--error-border); color: var(--error-text); }
-  .msg .body { flex: 1; min-width: 0; padding-top: 3px; }
-  .msg.user .body { white-space: pre-wrap; background: var(--base-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 11px 15px; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
-  .msg.error .body { color: var(--error-text); background: var(--error-bg); border: 1px solid var(--error-border); border-radius: var(--radius); padding: 11px 15px; }
-  .msg.ai pre { background: #0b0f14; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; overflow-x: auto; margin: 10px 0; font-size: 12.5px; position: relative; }
-  [data-theme="light"] .msg.ai pre { background: #11151a; color: #d5e0f0; }
-  .msg.ai code { font-family: var(--font-mono); font-size: 12.5px; color: var(--primary); }
-  .msg.ai pre code { color: #bce08d; }
-  .msg.ai p { margin: 6px 0; }
-  .msg.ai ul, .msg.ai ol { margin: 6px 0 6px 22px; }
-  .msg.ai img { max-width: 100%; border-radius: 12px; margin-top: 12px; border: 1px solid var(--border); }
-  .msg.ai h1, .msg.ai h2, .msg.ai h3 { font-weight: 600; margin: 12px 0 6px; }
-  .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--base-tertiary); border: 1px solid var(--border); color: var(--content-2); border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; opacity: 0; transform: translateY(-2px); transition: opacity .15s, transform .15s; font-family: var(--font-ui); }
-  pre:hover .copy-btn { opacity: 1; transform: translateY(0); }
-  .cursor { display: inline-block; width: 7px; height: 15px; background: var(--primary); vertical-align: text-bottom; animation: blink 1s steps(2) infinite; border-radius: 2px; }
-  @keyframes blink { 50% { opacity: 0; } }
-  #typing { display: none; max-width: 790px; margin: 0 auto; padding: 0 26px 8px; color: var(--primary); font-size: 12.5px; font-weight: 600; align-items: center; gap: 6px; }
-  #typing.show { display: inline-flex; }
-  #typing .dot { animation: blink 1.2s infinite; }
-  .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--primary); border-top-color: transparent; border-radius: 50%; animation: rot .7s linear infinite; vertical-align: middle; }
-  @keyframes rot { to { transform: rotate(360deg); } }
-
-  /* ---------- composer ---------- */
-  #composer-wrap { padding: 12px 24px 18px; }
-  #composer {
-    max-width: 790px; margin: 0 auto; background: linear-gradient(180deg, var(--base-secondary), var(--base-tertiary));
-    border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px 8px; transition: border-color .2s, box-shadow .2s, transform .2s;
-    box-shadow: 0 4px 24px rgba(0,0,0,.35); position: relative;
-  }
-  #composer::before {
-    content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px;
-    background: linear-gradient(135deg, var(--primary), transparent 35%);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; transition: opacity .2s; pointer-events: none;
-  }
-  #composer:hover::before, #composer:focus-within::before { opacity: 1; }
-  #composer:focus-within { border-color: transparent; box-shadow: 0 0 0 1px var(--primary), 0 8px 32px rgba(0,0,0,.4); }
-  #input { width: 100%; background: none; border: none; outline: none; color: var(--content); font-size: 14.5px; resize: none; font-family: var(--font-ui); max-height: 160px; padding: 4px 6px; line-height: 1.6; }
-  #input::placeholder { color: var(--content-3); }
-  #composer .row { display: flex; align-items: center; gap: 10px; padding: 6px 2px 2px; }
-  select.model {
-    background: none; border: 1px solid transparent; color: var(--content-2); border-radius: 7px;
-    padding: 5px 8px; font-size: 12px; max-width: 220px; cursor: pointer; font-family: var(--font-mono);
-    transition: background .12s, color .12s;
-  }
-  select.model:hover { background: var(--base-tertiary); color: var(--content); }
-  select.model:focus { outline: none; border-color: var(--primary); }
-  select.model option { background: var(--base-secondary); color: var(--content); }
-  .mini-toggle { display: flex; align-items: center; gap: 6px; color: var(--content-2); font-size: 12px; cursor: pointer; }
-  .mini-toggle input { accent-color: var(--primary); }
-  .hint-text { font-size: 11px; color: var(--content-3); }
-  .svg-btn {
-    width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--border);
-    background: none; color: var(--content-2); cursor: pointer; padding: 0;
-    display: flex; align-items: center; justify-content: center;
-    transition: background .12s, color .12s, border-color .12s, transform .12s;
-  }
-  .svg-btn svg { display: block; }
-  .svg-btn:hover { background: var(--base-tertiary); color: var(--content); border-color: var(--primary); transform: translateY(-1px); }
-  .svg-btn.md-off { opacity: .55; }
-  .svg-btn:not(.md-off) { color: var(--primary); }
-  #md-preview-box { opacity: .7; padding: 12px 0; border-top: 1px dashed var(--border); }
-  #md-preview-box .body { padding: 8px 14px; background: var(--base-tertiary); border: 1px dashed var(--border); border-radius: 10px; font-size: 12.5px; }
-  #md-preview-box .body code { font-size: 12px; }
-  #mic-btn { display: none; }
-  #mic-btn.recording { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); animation: micpulse 1.4s ease-out infinite; }
-  @keyframes micpulse { 0% { box-shadow: 0 0 0 0 rgba(229,72,77,.35) } 100% { box-shadow: 0 0 0 12px rgba(229,72,77,0) } }
-  #send-btn {
-    margin-left: auto; width: 36px; height: 36px; border-radius: 9px; border: none;
-    background: var(--primary); color: #0d0f12; font-size: 15px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; transition: filter .12s, transform .12s;
-  }
-  #send-btn:hover { filter: brightness(1.1); transform: scale(1.06); }
-  #send-btn:disabled { background: var(--base-tertiary); color: var(--content-3); cursor: default; filter: none; transform: none; }
-  #send-btn.stop { background: var(--error-border); color: #fff; }
-
-  /* ---------- lampiran & slash (v2) ---------- */
-  #attach-prev { display: none; max-width: 790px; margin: 0 auto 8px; }
-  #attach-prev.show { display: flex; align-items: center; gap: 10px; background: var(--base-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 9px 11px; animation: attachIn .18s ease-out; }
-  @keyframes attachIn { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: translateY(0) } }
-  #attach-prev img { max-height: 64px; border-radius: 9px; border: 1px solid var(--border); }
-  #attach-prev .meta { flex: 1; min-width: 0; font-size: 12px; color: var(--content-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #attach-prev .x { background: none; border: none; color: var(--content-3); cursor: pointer; font-size: 15px; padding: 4px 6px; border-radius: 6px; }
-  #attach-prev .x:hover { background: var(--error-bg); color: var(--error-border); }
-  #attach-prev .x svg { display: block; }
-  .attach-row { display: flex; align-items: center; gap: 9px; margin-top: 9px; padding: 8px 11px; background: var(--base-tertiary); border: 1px solid var(--border); border-radius: 10px; }
-  .attach-row .ic { color: var(--content-2); flex-shrink: 0; display: flex; }
-  .attach-row img { max-height: 40px; border-radius: 7px; border: 1px solid var(--border); }
-  .attach-row .nm { flex: 1; min-width: 0; font-size: 12px; color: var(--content-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .msg.ai .body { position: relative; }
-  .msg .tools { position: absolute; top: -13px; right: 0; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
-  .msg.ai:hover .tools { opacity: 1; }
-  .tools .tbtn { background: var(--base-tertiary); border: 1px solid var(--border); color: var(--content-2); border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; font-family: var(--font-ui); }
-  .tools .tbtn:hover { color: var(--content); border-color: var(--primary); }
-  #slash-pop, #export-menu {
-    position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%);
-    background: var(--base-secondary); border: 1px solid var(--border); border-radius: 14px; z-index: 30;
-    box-shadow: 0 16px 48px rgba(0,0,0,.5); overflow: hidden; display: none;
-  }
-  #slash-pop.show, #export-menu.show { display: block; }
-  .slash-item { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; color: var(--content); padding: 11px 14px; font-size: 13px; cursor: pointer; text-align: left; font-family: var(--font-ui); transition: background .12s; }
-  .slash-item:hover, .slash-item.sel { background: var(--primary-dim); }
-  .slash-item .ic { width: 24px; display: flex; align-items: center; justify-content: center; color: var(--content-2); flex-shrink: 0; }
-  .slash-item .cmd { font-family: var(--font-mono); color: var(--primary); font-size: 12px; min-width: 90px; }
-  .slash-item .desc { flex: 1; color: var(--content-2); font-size: 12px; }
-
-  /* scrollbars */
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; transition: background .15s; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--content-3); }
-
-  /* ---------- responsive ---------- */
-  #backdrop {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
-    z-index: 15; opacity: 0; transition: opacity .25s; -webkit-tap-highlight-color: transparent;
-  }
-  #backdrop.show { opacity: 1; }
-
-  @media (max-width: 720px) {
-    #sidebar {
-      position: fixed; top: 0; left: 0; bottom: 0; z-index: 20; height: 100dvh;
-      box-shadow: 4px 0 28px rgba(0,0,0,.55);
-      width: min(286px, 84vw);
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-    #sidebar.hidden { margin-left: calc(-1 * min(286px, 84vw) - 10px); }
-    #topbar { padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
-    #chat { padding: 18px 14px 8px; }
-    #composer-wrap { padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); }
-    #input { font-size: 16px; }
-    .hint-text { display: none; }
-    select.model { max-width: 140px; font-size: 11px; }
-    .home-logo { width: 68px; height: 68px; border-radius: 17px; }
-    .orb { width: min(420px, 90vw); height: min(420px, 90vw); }
-  }
-
-  @media (min-width: 1400px) {
-    #chat, #typing { max-width: 900px; }
-    #composer { max-width: 900px; }
-    #suggests { max-width: 780px; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .orb, .home-logo, .msg, #attach-prev.show { animation: none; }
-    #chat-wrap { scroll-behavior: auto; }
-  }
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
+<!-- latar halus ala Claude -->
+<div class="bg-scene" aria-hidden="true">
+  <div class="aurora a1"></div>
+  <div class="aurora a2"></div>
+  <div class="aurora a3"></div>
+</div>
+
+<div class="layout">
 
 <div id="backdrop" onclick="closeSidebar()"></div>
 <aside id="sidebar">
   <div class="sb-head">
-    <div class="logo-mark"><img src="minidevin.png" alt="MiniDevin"></div>
+    <div class="logo-mark">
+      <svg class="brand-ico" viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="Logo MiniDevin">
+        <path d="M12 2.5l1.7 5.1a2.2 2.2 0 0 0 1.4 1.4l5.1 1.7-5.1 1.7a2.2 2.2 0 0 0-1.4 1.4L12 18.9l-1.7-5.1a2.2 2.2 0 0 0-1.4-1.4L3.8 10.7l5.1-1.7a2.2 2.2 0 0 0 1.4-1.4L12 2.5z"/>
+        <circle cx="19" cy="19" r="2.1"/>
+        <circle cx="5" cy="17.5" r="1.4"/>
+      </svg>
+    </div>
     <div>
       <div class="name">MiniDevin</div>
       <div class="tag">AI Engineer</div>
     </div>
+    <button class="theme-toggle" id="themeToggle" title="Mode siang/malam" aria-label="Ganti mode siang/malam">
+      <svg class="icon-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7.5 7.5 0 0 0 9.8 9.8z"/></svg>
+    </button>
+    <button class="panel-hide" onclick="toggleSidebar()" title="Sembunyikan panel" aria-label="Sembunyikan panel">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
   </div>
-  <button class="sb-new" onclick="newChat()">+ New Thread</button>
+  <button class="sb-new" onclick="newChat()">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+    <span>New Thread</span>
+  </button>
   <div class="sb-label">Conversations <button id="sb-del-all" title="Hapus semua"
     onclick="deleteSelected()">✕</button></div>
   <div id="convo-list"></div>
@@ -293,33 +63,51 @@
 </aside>
 
 <div id="main">
-  <div id="topbar">
-    <button class="icon-btn" onclick="toggleSidebar()" title="Sidebar">☰</button>
-    <span id="topbar-title" style="font-size:14px;font-weight:600;color:var(--content-2)">New conversation</span>
-    <span id="model-chip" style="font-size:11px;color:var(--content-3);background:var(--base-tertiary);border-radius:12px;padding:3px 10px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex;align-items:center;gap:5px"></span>
-    <span class="spacer"></span>
-    <div id="export-menu-wrap" style="position:relative;display:none">
-      <button class="icon-btn" id="export-btn" onclick="toggleExportMenu()" title="Ekspor chat">📥</button>
-      <div id="export-menu">
-        <button onclick="exportChat('md')">Markdown (.md)</button>
-        <button onclick="exportChat('json')">JSON (.json)</button>
-        <button onclick="exportChat('html')">HTML (.html)</button>
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="icon-btn menu-btn" onclick="toggleSidebar()" title="Buka sidebar" aria-label="Buka sidebar">☰</button>
+      <span class="header-pill"><span class="hp-dot"></span>MiniDevin</span>
+      <span id="topbar-title">New conversation</span>
+    </div>
+    <div class="topbar-right">
+      <span id="model-chip" class="model-chip"></span>
+      <div class="status-row">
+        <span id="statusDot" class="dot"></span>
+        <span id="statusLabel">menghubungkan…</span>
+      </div>
+      <div id="export-menu-wrap" style="position:relative;display:none">
+        <button class="icon-btn" id="export-btn" onclick="toggleExportMenu()" title="Ekspor chat">📥</button>
+        <div id="export-menu">
+          <button onclick="exportChat('md')">Markdown (.md)</button>
+          <button onclick="exportChat('json')">JSON (.json)</button>
+          <button onclick="exportChat('html')">HTML (.html)</button>
+        </div>
+      </div>
+      <button class="side-btn" onclick="toggleSidebar()" title="Sembunyikan sidebar" aria-label="Sembunyikan sidebar">☰</button>
+    </div>
+  </header>
+
+  <section id="home">
+    <div class="orb"></div>
+    <div class="welcome-inner">
+      <span class="eyebrow">✦ Selamat datang di MiniDevin</span>
+      <h2>Mari mulai <span class="grad">berkarya</span></h2>
+      <p class="sub">MiniDevin adalah AI software engineer bertenaga Puter.js — 500+ model langsung dari browser Anda, tanpa backend dan tanpa API key. Login sekali dengan akun Puter untuk menyimpan riwayat.</p>
+      <div id="suggests">
+        <button class="sugg" onclick="useSugg(this)"><span class="sc">💡</span>Tanyakan apa saja</button>
+        <button class="sugg" onclick="useSugg(this)"><span class="sc">✍️</span>Bantu tulis, rapikan, atau jelaskan</button>
+        <button class="sugg" onclick="useSugg(this)"><span class="sc">📝</span>Ringkas artikel atau ide panjang</button>
+        <button class="sugg" onclick="useSugg(this)"><span class="sc">🎨</span>Tulis ide kreatif baru</button>
+      </div>
+      <div class="model-section">
+        <div class="ms-head">
+          <span class="ms-title">Semua Model</span>
+          <span id="modelCount" class="ms-count">memuat…</span>
+        </div>
+        <div id="modelNames" class="model-list" role="list"></div>
       </div>
     </div>
-  </div>
-
-  <div id="home">
-    <div class="orb"></div>
-    <div class="home-logo"><img src="minidevin.png" alt="MiniDevin"></div>
-    <h2>Let's get started</h2>
-    <p class="sub">MiniDevin adalah AI software engineer bertenaga Puter.js — 500+ model langsung dari browser Anda, tanpa backend dan tanpa API key. Login sekali dengan akun Puter untuk menyimpan riwayat.</p>
-    <div id="suggests">
-      <button class="sugg" onclick="useSugg(this)">Tanyakan apa saja tentang AI, teknologi, atau pemrograman</button>
-      <button class="sugg" onclick="useSugg(this)">Bantu saya menulis, memperbaiki, atau menjelaskan sesuatu</button>
-      <button class="sugg" onclick="useSugg(this)">Ringkas artikel atau ide panjang menjadi poin utama</button>
-      <button class="sugg" onclick="useSugg(this)">/gambar deskripsi visual apa pun, mis. pemandangan kota malam hujan</button>
-    </div>
-  </div>
+  </section>
 
   <div id="chat-wrap"><div id="chat"></div></div>
   <div id="typing">MiniDevin is working <span class="dot">●</span><span class="dot" style="animation-delay:.2s">●</span><span class="dot" style="animation-delay:.4s">●</span></div>
@@ -359,6 +147,7 @@
       </div>
     </div>
   </div>
+</div>
 </div>
 <div id="slash-pop"></div>
 
@@ -620,6 +409,13 @@ const authBtn = document.getElementById('auth-btn');
 function renderThemeIcon() {
   const isLight = document.documentElement.dataset.theme === 'light';
   themeBtn.innerHTML = isLight ? ICONS.moon : ICONS.sun;
+
+const themeToggleBtnEl = document.getElementById('themeToggle');
+if (themeToggleBtnEl) {
+    themeToggleBtnEl.innerHTML = isLight ? ICONS.moon : ICONS.sun.
+trim();
+    themeToggleBtnEl.title = isLight ? 'Mode gelap' : 'Mode terang';
+  }
   themeBtn.title = isLight ? 'Mode gelap' : 'Mode terang';
 }
 function toggleTheme() {
@@ -632,6 +428,10 @@ if (localStorage.getItem('minidevin_theme') === 'light') document.documentElemen
 if (isMobile()) sidebarEl.classList.add('hidden');
 updateBackdrop();
 window.addEventListener('resize', updateBackdrop);
+
+// Tombol tema di head sidebar (gaya Marbel)mengikuti toggleTheme
+const themeToggleBtn = document.getElementById('themeToggle');
+if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
 
 async function loadModels() {
   let models = FALLBACK_MODELS;
@@ -1090,9 +890,38 @@ input.addEventListener('input', () => {
   // set chip model awal agar terlihat sebelum daftar model selesai dimuat
   modelChip.innerHTML = BOT_ICON + '<span>' + (localStorage.getItem('minidevin_model') || FALLBACK_MODELS[0]) + '</span>';
   await loadModels();
+  renderModelList();
   await loadConversations();
   showHome(true);
+  const sd = document.getElementById('statusDot');
+  const sl = document.getElementById('statusLabel');
+  if (sd) sd.className = 'dot on';
+  if (sl) sl.textContent = 'terhubung';
 })();
+
+/* ---------- Marbel-style: daftar model chip di welcome ---------- */
+function renderModelList() {
+  const modelNamesEl = document.getElementById('modelNames');
+  const modelCountEl = document.getElementById('modelCount');
+  if (!modelNamesEl) return;
+  modelNamesEl.innerHTML = '';
+  Array.from(modelSelect.options).forEach(o => {
+    const b = document.createElement('button');
+    b.className = 'mname' + (o.value === modelSelect.value ? ' active' : '');
+    b.textContent = o.value;
+    b.title = o.value;
+    b.onclick = () => {
+      modelSelect.value = o.value;
+      localStorage.setItem('minidevin_model', o.value);
+      modelSelect.title = 'Model: ' + o.value;
+      modelChip.innerHTML = BOT_ICON + '<span>' + o.value + '</span>';
+      modelChip.title = 'Model aktif: ' + o.value;
+      renderModelList();
+    };
+    modelNamesEl.appendChild(b);
+  });
+  if (modelCountEl) modelCountEl.textContent = modelSelect.options.length + ' model';
+}
 </script>
 </body>
 </html>
