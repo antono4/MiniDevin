@@ -14,7 +14,7 @@
 
 ## 📖 Tentang
 
-Repository **`MiniDevin`** adalah proyek Node.js yang dibangun dengan HTML, CSS, JavaScript, Python.
+Repository **`MiniDevin`** adalah proyek multi-bagian (monorepo) yang dibangun dengan HTML, CSS, JavaScript, Python.
 Situs ini diterbitkan melalui **GitHub Pages** dan dapat diakses di [`https://antono4.github.io/MiniDevin/`](https://antono4.github.io/MiniDevin/).
 
 ## 🗂️ Struktur Proyek
@@ -78,11 +78,15 @@ Berdasarkan ekstensi berkas yang terdeteksi di repository:
 
 ## 🚀 Menjalankan Secara Lokal
 
-Butuh Node.js:
+Repo ini punya beberapa bagian (misalnya `backend/` dan `frontend/`);
+jalankan tiap bagian sesuai kebutuhan:
 
 ```bash
-npm install
-npm run dev
+# bagian Python
+cd backend && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+
+# bagian Node
+cd frontend && npm install && npm run dev
 ```
 
 ## 📬 Kontak
